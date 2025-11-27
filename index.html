@@ -52,9 +52,25 @@
             animation: float 3s ease-in-out infinite;
         }
         
+        /* Estilos específicos para la estrella activa */
         .star-active {
-            fill: #fbbf24; /* yellow-400 */
-            color: #fbbf24;
+            fill: #fbbf24 !important; /* yellow-400 */
+            color: #fbbf24 !important;
+            stroke: #d97706 !important; /* amber-600 */
+        }
+        
+        /* Asegurar que los botones flotantes estén por encima de todo */
+        .floating-btn {
+            z-index: 50;
+        }
+        
+        /* Estado oculto para la categoría */
+        .blur-category {
+            filter: blur(4px);
+            opacity: 0.5;
+            user-select: none;
+            background-color: #e5e7eb !important; /* gris */
+            color: transparent !important;
         }
     </style>
 </head>
@@ -75,8 +91,8 @@
             
             <div class="grid grid-cols-1 gap-4 mt-6">
                 <!-- MODO HISTORIA -->
-                <button onclick="startMode('story')" class="group relative bg-orange-100 hover:bg-orange-200 border-2 border-orange-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4">
-                    <div class="bg-orange-500 text-white p-3 rounded-full">
+                <button onclick="startMode('story')" class="group relative bg-orange-100 hover:bg-orange-200 border-2 border-orange-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4 shadow-sm">
+                    <div class="bg-orange-500 text-white p-3 rounded-full shadow-inner">
                         <i data-lucide="map" class="w-6 h-6"></i>
                     </div>
                     <div>
@@ -86,8 +102,8 @@
                 </button>
 
                 <!-- MODO MARATÓN -->
-                <button onclick="startMode('marathon')" class="group relative bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4">
-                    <div class="bg-blue-500 text-white p-3 rounded-full">
+                <button onclick="startMode('marathon')" class="group relative bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4 shadow-sm">
+                    <div class="bg-blue-500 text-white p-3 rounded-full shadow-inner">
                         <i data-lucide="infinity" class="w-6 h-6"></i>
                     </div>
                     <div>
@@ -97,8 +113,8 @@
                 </button>
 
                 <!-- MODO REPASO (Solo visible si hay reviews) -->
-                <button id="btn-review-mode" onclick="startMode('review')" class="hidden group relative bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4">
-                    <div class="bg-purple-500 text-white p-3 rounded-full">
+                <button id="btn-review-mode" onclick="startMode('review')" class="hidden group relative bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4 shadow-sm">
+                    <div class="bg-purple-500 text-white p-3 rounded-full shadow-inner">
                         <i data-lucide="star" class="w-6 h-6"></i>
                     </div>
                     <div>
@@ -112,17 +128,24 @@
         </div>
 
         <!-- PANTALLA DE JUEGO -->
-        <div id="game-screen" class="hidden w-full flex flex-col items-center relative">
+        <div id="game-screen" class="hidden w-full flex flex-col items-center relative pt-14">
             
-            <!-- Botón Volver al Menú -->
-            <button onclick="goToMenu()" class="absolute top-0 left-0 p-2 bg-white/50 hover:bg-white rounded-full shadow-sm text-gray-600 transition z-10" title="Volver al inicio">
-                <i data-lucide="home" class="w-5 h-5"></i>
+            <!-- Botón Volver al Menú (Top Left) -->
+            <button id="btn-home" onclick="goToMenu()" class="floating-btn absolute top-0 left-0 mt-2 ml-2 px-4 py-2 bg-white hover:bg-gray-50 rounded-full shadow-md text-blue-600 border border-blue-100 transition flex items-center gap-2 font-bold text-sm" title="Volver al inicio">
+                <i data-lucide="home" class="w-4 h-4"></i>
+                <span>Inicio</span>
+            </button>
+
+            <!-- Botón Toggle Pista (Top Right) -->
+            <button id="btn-hint" onclick="toggleHintConfig()" class="floating-btn absolute top-0 right-0 mt-2 mr-2 px-4 py-2 bg-white hover:bg-yellow-50 rounded-full shadow-md text-gray-400 border border-gray-200 transition flex items-center gap-2 font-bold text-sm" title="Mostrar/Ocultar Categoría">
+                <span class="text-xs">Pista</span>
+                <i data-lucide="lightbulb" class="w-4 h-4"></i>
             </button>
 
             <!-- HUD -->
-            <div class="w-full mb-4 mt-8"> <!-- Added margin top for back button space -->
-                <div class="flex justify-between items-center mb-2">
-                    <div class="flex flex-col items-start pl-2">
+            <div class="w-full mb-4 mt-2">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <div class="flex flex-col items-start">
                         <span id="level-indicator" class="text-xs font-bold text-purple-600 uppercase tracking-wider bg-purple-100 px-2 py-0.5 rounded mb-1 w-fit">Nivel 1</span>
                         <h2 id="level-title" class="text-sm font-bold text-gray-700">El Bosque</h2>
                     </div>
@@ -133,31 +156,29 @@
                 </div>
 
                 <!-- Progress Bar -->
-                <div class="w-full h-3 bg-gray-200 rounded-full relative overflow-hidden">
+                <div class="w-full h-3 bg-gray-200 rounded-full relative overflow-hidden shadow-inner">
                     <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-500" style="width: 0%;"></div>
                 </div>
-                <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                <div class="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
                     <span>Inicio</span>
                     <span id="progress-text">Ramona</span>
                 </div>
             </div>
 
             <!-- FLASH CARD AREA -->
-            <div class="perspective-1000 w-full h-96 cursor-pointer group mb-4 relative" onclick="if(!isCardFlipped) flipCard()">
+            <div class="perspective-1000 w-full h-96 cursor-pointer group mb-4 relative z-0" onclick="if(!isCardFlipped) flipCard()">
                 
                 <div id="flashcard" class="card-container relative w-full h-full text-center transition-all duration-500 transform-style-3d shadow-2xl rounded-2xl">
-                    
-                    <!-- STAR TOGGLE BUTTON (Absolute on card container so it flips with it but accessible) -->
-                    <!-- We place it inside front and back to ensure visibility and prevent z-index wars with backface-visibility -->
                     
                     <!-- FRONT -->
                     <div class="absolute w-full h-full backface-hidden bg-white rounded-2xl p-6 flex flex-col items-center justify-center border-2 border-blue-100">
                         <!-- Review Star Button Front -->
-                        <button onclick="toggleReview(event)" class="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition z-20 focus:outline-none star-btn">
-                            <i data-lucide="star" class="w-6 h-6 text-gray-300"></i>
+                        <button onclick="toggleReview(event)" class="absolute top-3 left-3 p-3 rounded-full bg-gray-50 hover:bg-gray-100 transition z-20 focus:outline-none star-btn shadow-sm border border-gray-100 group/star" title="Marcar para repasar">
+                            <i data-lucide="star" class="w-6 h-6 text-gray-300 transition-colors"></i>
                         </button>
 
-                        <span id="card-category" class="absolute top-4 right-4 text-xs font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-full uppercase tracking-wider">Categoría</span>
+                        <span id="card-category" class="absolute top-4 right-4 text-xs font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-full uppercase tracking-wider transition-all duration-300">Categoría</span>
+                        
                         <div class="mb-4">
                             <i data-lucide="pill" class="w-12 h-12 text-blue-400 mx-auto mb-2"></i>
                             <h2 class="text-sm text-gray-400 font-semibold uppercase">Fármaco</h2>
@@ -169,8 +190,8 @@
                     <!-- BACK -->
                     <div class="absolute w-full h-full backface-hidden rotate-y-180 bg-slate-50 rounded-2xl p-6 flex flex-col items-center justify-center border-2 border-orange-100 overflow-y-auto">
                          <!-- Review Star Button Back -->
-                         <button onclick="toggleReview(event)" class="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition z-20 focus:outline-none star-btn">
-                            <i data-lucide="star" class="w-6 h-6 text-gray-300"></i>
+                         <button onclick="toggleReview(event)" class="absolute top-3 left-3 p-3 rounded-full bg-gray-50 hover:bg-gray-100 transition z-20 focus:outline-none star-btn shadow-sm border border-gray-100 group/star" title="Marcar para repasar">
+                            <i data-lucide="star" class="w-6 h-6 text-gray-300 transition-colors"></i>
                         </button>
 
                          <div class="w-full text-left space-y-4">
@@ -193,12 +214,12 @@
 
             <!-- CONTROLS -->
             <div id="controls" class="flex gap-4 w-full opacity-0 pointer-events-none transition-opacity duration-300">
-                <button onclick="handleAnswer(false)" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 rounded-xl border border-red-300 transition flex flex-col items-center justify-center gap-1">
+                <button onclick="handleAnswer(false)" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 rounded-xl border border-red-300 transition flex flex-col items-center justify-center gap-1 shadow-sm">
                     <i data-lucide="x-circle" class="w-5 h-5"></i>
                     <span>Fallé</span>
                     <span class="text-[10px] font-normal opacity-75">Repetir carta</span>
                 </button>
-                <button onclick="handleAnswer(true)" class="flex-1 bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 rounded-xl border border-green-300 transition flex flex-col items-center justify-center gap-1">
+                <button onclick="handleAnswer(true)" class="flex-1 bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 rounded-xl border border-green-300 transition flex flex-col items-center justify-center gap-1 shadow-sm">
                     <i data-lucide="check-circle" class="w-5 h-5"></i>
                     <span>¡Lo sabía!</span>
                     <span class="text-[10px] font-normal opacity-75">Avanzar</span>
@@ -207,22 +228,22 @@
         </div>
 
         <!-- PANTALLA NIVEL COMPLETADO -->
-        <div id="level-complete-screen" class="hidden text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full">
+        <div id="level-complete-screen" class="hidden text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full relative">
             <div class="flex justify-center mb-4">
                 <i data-lucide="trophy" class="w-20 h-20 text-yellow-400 animate-bounce"></i>
             </div>
             <h2 class="text-2xl font-bold text-green-700">¡Nivel Completado!</h2>
             <p class="text-gray-600">Has superado este obstáculo. Estás más cerca de Ramona.</p>
-            <button onclick="nextLevel()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg">
-                Siguiente Nivel
+            <button onclick="nextLevel()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg flex justify-center items-center gap-2">
+                Siguiente Nivel <i data-lucide="arrow-right" class="w-4 h-4"></i>
             </button>
-            <button onclick="goToMenu()" class="w-full text-gray-500 font-semibold py-2">
+            <button onclick="goToMenu()" class="w-full text-gray-500 font-semibold py-2 hover:text-gray-700 transition">
                 Volver al Menú
             </button>
         </div>
 
         <!-- PANTALLA FINAL -->
-        <div id="end-screen" class="hidden text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full">
+        <div id="end-screen" class="hidden text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full relative">
             <div class="flex justify-center mb-4 relative">
                 <i data-lucide="heart" class="w-24 h-24 text-red-500 animate-bounce absolute opacity-20 scale-150"></i>
                 <i data-lucide="bird" class="w-24 h-24 text-orange-500 relative z-10"></i>
@@ -241,8 +262,8 @@
                     <p class="text-xl font-bold text-red-500" id="final-errors">0</p>
                 </div>
             </div>
-            <button onclick="goToMenu()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg mt-6">
-                Volver al Menú
+            <button onclick="goToMenu()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg mt-6 flex justify-center items-center gap-2">
+                <i data-lucide="home" class="w-4 h-4"></i> Volver al Menú
             </button>
         </div>
 
@@ -581,6 +602,9 @@
         let errors = 0;
         let isCardFlipped = false;
         
+        // Estado de pistas (Categoría visible o no) - Default: false
+        let hintEnabled = false;
+        
         // Cargar favoritos de localStorage
         let reviewList = JSON.parse(localStorage.getItem('ramonaReviews') || '[]');
         
@@ -622,6 +646,9 @@
         const elDrug = document.getElementById('card-drug');
         const elInd = document.getElementById('card-indication');
         const elMech = document.getElementById('card-mechanism');
+        
+        // Botones nuevos
+        const btnHint = document.getElementById('btn-hint');
 
         // Inicialización
         document.getElementById('total-cards-count').innerText = rawData.length;
@@ -654,6 +681,8 @@
             score = 0;
             errors = 0;
             currentLevel = 0;
+            hintEnabled = false; // Reset hint state on new game
+            updateHintUI();
             
             startScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
@@ -665,16 +694,14 @@
                 updateLevelUI("Modo Maratón", "Todos los fármacos");
             } else if (gameMode === 'review') {
                 // Filtrar rawData para coger solo los que están en reviewList
-                // Usamos el nombre del fármaco como ID único
                 fullDeck = rawData.filter(item => reviewList.includes(item.drug));
-                // Barajar
                 fullDeck = shuffle(fullDeck);
                 levelDeck = [...fullDeck];
                 updateLevelUI("Modo Repaso", "Cartas Marcadas");
             } else {
                 fullDeck = shuffle([...rawData]);
                 startLevel(0);
-                return; // startLevel llama a loadNextCard
+                return; 
             }
             
             updateUI();
@@ -683,11 +710,9 @@
 
         function startLevel(lvlIndex) {
             currentLevel = lvlIndex;
-            // Cortar el mazo completo para sacar el sub-mazo de este nivel
             const start = lvlIndex * CARDS_PER_LEVEL;
             const end = start + CARDS_PER_LEVEL;
             
-            // Si ya no quedan cartas suficientes, cogemos lo que queda
             if (start >= fullDeck.length) {
                 showWinScreen();
                 return;
@@ -700,7 +725,6 @@
             
             updateLevelUI(`Nivel ${lvlIndex + 1}`, title);
             
-            // Ocultar pantalla de nivel completado si estaba
             levelCompleteScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             gameScreen.classList.add('flex');
@@ -715,18 +739,13 @@
 
         function updateUI() {
             uiScore.innerText = score;
-            
-            // Barra de progreso
             let progress = 0;
             
             if (gameMode === 'story') {
-                // Modo historia: Progreso dentro del nivel
                 progress = 100 - ((levelDeck.length / CARDS_PER_LEVEL) * 100);
             } else if (gameMode === 'review') {
-                // Modo repaso: Progreso sobre el total de reviews
                 progress = 100 - ((levelDeck.length / fullDeck.length) * 100);
             } else {
-                // Maratón
                 progress = 100 - ((levelDeck.length / rawData.length) * 100);
             }
             
@@ -735,19 +754,44 @@
             uiProgressBar.style.width = `${progress}%`;
         }
 
+        // Toggle para la pista de categoría
+        function toggleHintConfig() {
+            hintEnabled = !hintEnabled;
+            updateHintUI();
+        }
+
+        function updateHintUI() {
+            // Actualizar botón
+            const icon = btnHint.querySelector('svg');
+            if(hintEnabled) {
+                btnHint.classList.add('text-yellow-500', 'border-yellow-200', 'bg-yellow-50');
+                btnHint.classList.remove('text-gray-400', 'border-gray-200', 'bg-white');
+                if(icon) icon.classList.add('fill-current');
+            } else {
+                btnHint.classList.remove('text-yellow-500', 'border-yellow-200', 'bg-yellow-50');
+                btnHint.classList.add('text-gray-400', 'border-gray-200', 'bg-white');
+                if(icon) icon.classList.remove('fill-current');
+            }
+
+            // Actualizar etiqueta en la carta actual
+            if(hintEnabled) {
+                elCat.classList.remove('blur-category');
+            } else {
+                elCat.classList.add('blur-category');
+            }
+        }
+
         function loadNextCard() {
             if (levelDeck.length === 0) {
                 handleEmptyDeck();
                 return;
             }
 
-            // Resetear estado visual de la carta
             isCardFlipped = false;
             cardContainer.classList.remove('flipped');
             controls.style.opacity = '0';
             controls.style.pointerEvents = 'none';
 
-            // Coger siguiente carta
             currentCard = levelDeck.shift(); 
 
             setTimeout(() => {
@@ -756,13 +800,21 @@
                 elInd.innerText = currentCard.ind;
                 elMech.innerText = currentCard.mech;
                 
-                // Color categoría
+                // Color categoría base (aunque esté borrosa, el color de fondo se mantiene sutilmente)
                 const colors = ['text-blue-500', 'text-purple-500', 'text-pink-500', 'text-orange-500'];
                 const bgColors = ['bg-blue-100', 'bg-purple-100', 'bg-pink-100', 'bg-orange-100'];
                 const colorIdx = currentCard.cat.length % colors.length;
-                elCat.className = `absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider ${colors[colorIdx]} ${bgColors[colorIdx]}`;
                 
-                // Actualizar estado de la estrella
+                // Limpiamos clases antiguas y ponemos las nuevas
+                elCat.className = `absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider transition-all duration-300 ${colors[colorIdx]} ${bgColors[colorIdx]}`;
+                
+                // Aplicar estado de blur si hintEnabled es false
+                if(!hintEnabled) {
+                    elCat.classList.add('blur-category');
+                } else {
+                    elCat.classList.remove('blur-category');
+                }
+                
                 updateStarIcon();
             }, 200);
             
@@ -771,31 +823,33 @@
         
         function updateStarIcon() {
             const isMarked = reviewList.includes(currentCard.drug);
-            const stars = document.querySelectorAll('.star-btn i');
-            stars.forEach(icon => {
+            // Usamos selectores más específicos
+            const starBtns = document.querySelectorAll('.star-btn');
+            
+            starBtns.forEach(btn => {
+                const icon = btn.querySelector('svg');
                 if (isMarked) {
-                    icon.classList.add('star-active', 'fill-current');
+                    // Estado Activo (Amarillo)
+                    icon.classList.add('star-active');
                     icon.classList.remove('text-gray-300');
                 } else {
-                    icon.classList.remove('star-active', 'fill-current');
+                    // Estado Inactivo (Gris)
+                    icon.classList.remove('star-active');
                     icon.classList.add('text-gray-300');
                 }
             });
         }
 
         function toggleReview(e) {
-            e.stopPropagation(); // Evitar que gire la carta
+            e.stopPropagation(); 
             const drugName = currentCard.drug;
             
             if (reviewList.includes(drugName)) {
-                // Desmarcar
                 reviewList = reviewList.filter(d => d !== drugName);
             } else {
-                // Marcar
                 reviewList.push(drugName);
             }
             
-            // Guardar en localStorage
             localStorage.setItem('ramonaReviews', JSON.stringify(reviewList));
             updateStarIcon();
         }
@@ -804,8 +858,6 @@
             if (gameMode === 'marathon' || gameMode === 'review') {
                 showWinScreen();
             } else {
-                // Modo historia: Nivel completado
-                // Comprobamos si quedan más niveles
                 const nextLevelStart = (currentLevel + 1) * CARDS_PER_LEVEL;
                 if (nextLevelStart >= fullDeck.length) {
                     showWinScreen();
@@ -826,15 +878,12 @@
         }
         
         function goToMenu() {
-            // Reset visuals logic mainly
             gameScreen.classList.add('hidden');
             gameScreen.classList.remove('flex');
             levelCompleteScreen.classList.add('hidden');
             endScreen.classList.add('hidden');
             
-            // Actualizar contador del botón review
             updateStartScreenUI();
-            
             startScreen.classList.remove('hidden');
         }
 
@@ -850,12 +899,8 @@
         function handleAnswer(isCorrect) {
             if (isCorrect) {
                 score += 10;
-                // No hacemos nada extra, la carta ya salió del mazo
             } else {
                 errors++;
-                // La carta vuelve al mazo (al final o aleatorio)
-                // En modo repaso NO la sacamos de reviewList si se falla, eso es solo manual con la estrella.
-                // Pero sí la volvemos a mostrar en esta sesión para que se aprenda.
                 if (levelDeck.length > 3) {
                      const insertPos = Math.floor(Math.random() * (levelDeck.length - 1)) + 1;
                      levelDeck.splice(insertPos, 0, currentCard);
