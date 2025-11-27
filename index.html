@@ -11,7 +11,8 @@
 
         body {
             font-family: 'Nunito', sans-serif;
-            background-color: #f0fdf4; /* Light Green bg */
+            /* El color de fondo se gestiona vía JS ahora */
+            transition: background-image 0.5s ease, background-color 0.5s ease;
         }
 
         h1, h2, h3 {
@@ -72,15 +73,27 @@
             background-color: #e5e7eb !important; /* gris */
             color: transparent !important;
         }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
     </style>
 </head>
-<body class="bg-gradient-to-b from-blue-100 to-green-100 min-h-screen flex flex-col text-slate-800">
+<body class="bg-gradient-to-b from-blue-100 to-green-100 min-h-screen flex flex-col text-slate-800" id="main-body">
 
     <!-- APP CONTAINER -->
     <div id="app" class="flex-grow flex flex-col items-center justify-center p-4 w-full max-w-lg mx-auto relative">
         
         <!-- PANTALLA DE INICIO -->
         <div id="start-screen" class="text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full relative">
+            
+            <!-- Botón Personalizar (Top Right) -->
+            <button onclick="toggleThemeModal()" class="absolute top-4 right-4 p-2 text-gray-400 hover:text-purple-500 transition rounded-full hover:bg-purple-50" title="Personalizar Fondo">
+                <i data-lucide="palette" class="w-6 h-6"></i>
+            </button>
+
             <div class="flex justify-center mb-4">
                 <i data-lucide="bird" class="w-24 h-24 text-orange-500 bird-anim"></i>
             </div>
@@ -267,6 +280,41 @@
             </button>
         </div>
 
+    </div>
+
+    <!-- MODAL DE TEMAS -->
+    <div id="theme-modal" class="hidden fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-700">Personalizar Fondo</h3>
+                <button onclick="toggleThemeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 gap-3">
+                <button onclick="setTheme('default')" class="flex items-center gap-3 p-3 rounded-xl border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition bg-gradient-to-r from-blue-100 to-green-100 bg-opacity-20">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-200 to-green-200 shadow-sm border border-white"></div>
+                    <span class="font-medium text-gray-700">Ramona (Original)</span>
+                </button>
+                <button onclick="setTheme('sunset')" class="flex items-center gap-3 p-3 rounded-xl border-2 border-transparent hover:border-orange-300 hover:bg-orange-50 transition bg-gradient-to-r from-orange-100 to-rose-100 bg-opacity-20">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-200 to-rose-200 shadow-sm border border-white"></div>
+                    <span class="font-medium text-gray-700">Atardecer</span>
+                </button>
+                <button onclick="setTheme('lavender')" class="flex items-center gap-3 p-3 rounded-xl border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition bg-gradient-to-r from-purple-100 to-indigo-100 bg-opacity-20">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-200 to-indigo-200 shadow-sm border border-white"></div>
+                    <span class="font-medium text-gray-700">Lavanda</span>
+                </button>
+                <button onclick="setTheme('mint')" class="flex items-center gap-3 p-3 rounded-xl border-2 border-transparent hover:border-teal-300 hover:bg-teal-50 transition bg-gradient-to-r from-teal-100 to-emerald-100 bg-opacity-20">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-teal-200 to-emerald-200 shadow-sm border border-white"></div>
+                    <span class="font-medium text-gray-700">Menta Fresca</span>
+                </button>
+                <button onclick="setTheme('sky')" class="flex items-center gap-3 p-3 rounded-xl border-2 border-transparent hover:border-sky-300 hover:bg-sky-50 transition bg-gradient-to-r from-sky-100 to-blue-100 bg-opacity-20">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky-200 to-blue-200 shadow-sm border border-white"></div>
+                    <span class="font-medium text-gray-700">Cielo Azul</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- JAVASCRIPT LOGIC -->
@@ -628,6 +676,8 @@
         const gameScreen = document.getElementById('game-screen');
         const levelCompleteScreen = document.getElementById('level-complete-screen');
         const endScreen = document.getElementById('end-screen');
+        const themeModal = document.getElementById('theme-modal');
+        const mainBody = document.getElementById('main-body');
         
         const uiScore = document.getElementById('score-display');
         const uiProgressBar = document.getElementById('progress-bar');
@@ -654,6 +704,10 @@
         document.getElementById('total-cards-count').innerText = rawData.length;
         lucide.createIcons();
         updateStartScreenUI();
+        
+        // Cargar tema guardado
+        const savedTheme = localStorage.getItem('ramonaTheme') || 'default';
+        setTheme(savedTheme);
 
         function updateStartScreenUI() {
             elReviewCount.innerText = reviewList.length;
@@ -675,6 +729,44 @@
             }
             return array;
         }
+
+        // --- THEME LOGIC ---
+        function toggleThemeModal() {
+            themeModal.classList.toggle('hidden');
+        }
+
+        function setTheme(themeName) {
+            // Limpiar clases anteriores
+            mainBody.className = "min-h-screen flex flex-col text-slate-800 transition-colors duration-500";
+            
+            // Aplicar nuevas clases según tema
+            switch(themeName) {
+                case 'sunset':
+                    mainBody.classList.add('bg-gradient-to-b', 'from-orange-100', 'to-rose-100');
+                    break;
+                case 'lavender':
+                    mainBody.classList.add('bg-gradient-to-b', 'from-purple-100', 'to-indigo-100');
+                    break;
+                case 'mint':
+                    mainBody.classList.add('bg-gradient-to-b', 'from-teal-100', 'to-emerald-100');
+                    break;
+                case 'sky':
+                    mainBody.classList.add('bg-gradient-to-b', 'from-sky-100', 'to-blue-100');
+                    break;
+                default: // 'default' / Ramona
+                    mainBody.classList.add('bg-gradient-to-b', 'from-blue-100', 'to-green-100');
+            }
+            
+            // Guardar preferencia
+            localStorage.setItem('ramonaTheme', themeName);
+            
+            // Cerrar modal si está abierto
+            if (!themeModal.classList.contains('hidden')) {
+                toggleThemeModal();
+            }
+        }
+
+        // --- GAME LOGIC ---
 
         function startMode(mode) {
             gameMode = mode;
