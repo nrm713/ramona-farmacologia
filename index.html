@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rescatando a Ramona - Farmacología</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=Nunito:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4; /* Light Green bg */
+        }
+
+        h1, h2, h3 {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        .card-container {
+            transition: transform 0.6s;
+        }
+
+        .card-container.flipped {
+            transform: rotateY(180deg);
+        }
+
+        /* Bird Animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .bird-anim {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .star-active {
+            fill: #fbbf24; /* yellow-400 */
+            color: #fbbf24;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-blue-100 to-green-100 min-h-screen flex flex-col text-slate-800">
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="flex-grow flex flex-col items-center justify-center p-4 w-full max-w-lg mx-auto relative">
+        
+        <!-- PANTALLA DE INICIO -->
+        <div id="start-screen" class="text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full relative">
+            <div class="flex justify-center mb-4">
+                <i data-lucide="bird" class="w-24 h-24 text-orange-500 bird-anim"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-green-700">¡Salva a Ramona!</h1>
+            <p class="text-lg text-gray-600">
+                Elige tu aventura de estudio:
+            </p>
+            
+            <div class="grid grid-cols-1 gap-4 mt-6">
+                <!-- MODO HISTORIA -->
+                <button onclick="startMode('story')" class="group relative bg-orange-100 hover:bg-orange-200 border-2 border-orange-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4">
+                    <div class="bg-orange-500 text-white p-3 rounded-full">
+                        <i data-lucide="map" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-orange-800 text-lg">Modo Historia</h3>
+                        <p class="text-xs text-orange-700">Niveles por fases (10 cartas).</p>
+                    </div>
+                </button>
+
+                <!-- MODO MARATÓN -->
+                <button onclick="startMode('marathon')" class="group relative bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4">
+                    <div class="bg-blue-500 text-white p-3 rounded-full">
+                        <i data-lucide="infinity" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-blue-800 text-lg">Modo Maratón</h3>
+                        <p class="text-xs text-blue-700">Todos los medicamentos seguidos.</p>
+                    </div>
+                </button>
+
+                <!-- MODO REPASO (Solo visible si hay reviews) -->
+                <button id="btn-review-mode" onclick="startMode('review')" class="hidden group relative bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 p-4 rounded-xl transition transform hover:scale-105 text-left flex items-center gap-4">
+                    <div class="bg-purple-500 text-white p-3 rounded-full">
+                        <i data-lucide="star" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-purple-800 text-lg">Modo Repaso</h3>
+                        <p class="text-xs text-purple-700">Practicar <span id="review-count">0</span> cartas marcadas.</p>
+                    </div>
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-400 mt-4 italic">Total base de datos: <span id="total-cards-count">0</span> fármacos</p>
+        </div>
+
+        <!-- PANTALLA DE JUEGO -->
+        <div id="game-screen" class="hidden w-full flex flex-col items-center relative">
+            
+            <!-- Botón Volver al Menú -->
+            <button onclick="goToMenu()" class="absolute top-0 left-0 p-2 bg-white/50 hover:bg-white rounded-full shadow-sm text-gray-600 transition z-10" title="Volver al inicio">
+                <i data-lucide="home" class="w-5 h-5"></i>
+            </button>
+
+            <!-- HUD -->
+            <div class="w-full mb-4 mt-8"> <!-- Added margin top for back button space -->
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex flex-col items-start pl-2">
+                        <span id="level-indicator" class="text-xs font-bold text-purple-600 uppercase tracking-wider bg-purple-100 px-2 py-0.5 rounded mb-1 w-fit">Nivel 1</span>
+                        <h2 id="level-title" class="text-sm font-bold text-gray-700">El Bosque</h2>
+                    </div>
+                    <div class="text-right">
+                         <div class="text-xs text-gray-500 font-bold">PUNTOS</div>
+                         <div class="text-xl font-bold text-green-600" id="score-display">0</div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full h-3 bg-gray-200 rounded-full relative overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-500" style="width: 0%;"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                    <span>Inicio</span>
+                    <span id="progress-text">Ramona</span>
+                </div>
+            </div>
+
+            <!-- FLASH CARD AREA -->
+            <div class="perspective-1000 w-full h-96 cursor-pointer group mb-4 relative" onclick="if(!isCardFlipped) flipCard()">
+                
+                <div id="flashcard" class="card-container relative w-full h-full text-center transition-all duration-500 transform-style-3d shadow-2xl rounded-2xl">
+                    
+                    <!-- STAR TOGGLE BUTTON (Absolute on card container so it flips with it but accessible) -->
+                    <!-- We place it inside front and back to ensure visibility and prevent z-index wars with backface-visibility -->
+                    
+                    <!-- FRONT -->
+                    <div class="absolute w-full h-full backface-hidden bg-white rounded-2xl p-6 flex flex-col items-center justify-center border-2 border-blue-100">
+                        <!-- Review Star Button Front -->
+                        <button onclick="toggleReview(event)" class="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition z-20 focus:outline-none star-btn">
+                            <i data-lucide="star" class="w-6 h-6 text-gray-300"></i>
+                        </button>
+
+                        <span id="card-category" class="absolute top-4 right-4 text-xs font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-full uppercase tracking-wider">Categoría</span>
+                        <div class="mb-4">
+                            <i data-lucide="pill" class="w-12 h-12 text-blue-400 mx-auto mb-2"></i>
+                            <h2 class="text-sm text-gray-400 font-semibold uppercase">Fármaco</h2>
+                        </div>
+                        <h3 id="card-drug" class="text-3xl font-extrabold text-slate-800 break-words w-full">Nombre del Fármaco</h3>
+                        <p class="mt-8 text-sm text-gray-400 animate-pulse">(Toca para ver la respuesta)</p>
+                    </div>
+
+                    <!-- BACK -->
+                    <div class="absolute w-full h-full backface-hidden rotate-y-180 bg-slate-50 rounded-2xl p-6 flex flex-col items-center justify-center border-2 border-orange-100 overflow-y-auto">
+                         <!-- Review Star Button Back -->
+                         <button onclick="toggleReview(event)" class="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100 transition z-20 focus:outline-none star-btn">
+                            <i data-lucide="star" class="w-6 h-6 text-gray-300"></i>
+                        </button>
+
+                         <div class="w-full text-left space-y-4">
+                            <div>
+                                <h4 class="text-xs font-bold text-orange-500 uppercase flex items-center gap-1">
+                                    <i data-lucide="activity" class="w-3 h-3"></i> Indicación Terapéutica
+                                </h4>
+                                <p id="card-indication" class="text-slate-700 font-medium leading-relaxed">...</p>
+                            </div>
+                            <div class="border-t border-gray-200 pt-2">
+                                <h4 class="text-xs font-bold text-purple-500 uppercase flex items-center gap-1">
+                                    <i data-lucide="settings-2" class="w-3 h-3"></i> Mecanismo de Acción
+                                </h4>
+                                <p id="card-mechanism" class="text-slate-600 text-sm leading-relaxed">...</p>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTROLS -->
+            <div id="controls" class="flex gap-4 w-full opacity-0 pointer-events-none transition-opacity duration-300">
+                <button onclick="handleAnswer(false)" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 rounded-xl border border-red-300 transition flex flex-col items-center justify-center gap-1">
+                    <i data-lucide="x-circle" class="w-5 h-5"></i>
+                    <span>Fallé</span>
+                    <span class="text-[10px] font-normal opacity-75">Repetir carta</span>
+                </button>
+                <button onclick="handleAnswer(true)" class="flex-1 bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 rounded-xl border border-green-300 transition flex flex-col items-center justify-center gap-1">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                    <span>¡Lo sabía!</span>
+                    <span class="text-[10px] font-normal opacity-75">Avanzar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PANTALLA NIVEL COMPLETADO -->
+        <div id="level-complete-screen" class="hidden text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full">
+            <div class="flex justify-center mb-4">
+                <i data-lucide="trophy" class="w-20 h-20 text-yellow-400 animate-bounce"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-green-700">¡Nivel Completado!</h2>
+            <p class="text-gray-600">Has superado este obstáculo. Estás más cerca de Ramona.</p>
+            <button onclick="nextLevel()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg">
+                Siguiente Nivel
+            </button>
+            <button onclick="goToMenu()" class="w-full text-gray-500 font-semibold py-2">
+                Volver al Menú
+            </button>
+        </div>
+
+        <!-- PANTALLA FINAL -->
+        <div id="end-screen" class="hidden text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl w-full">
+            <div class="flex justify-center mb-4 relative">
+                <i data-lucide="heart" class="w-24 h-24 text-red-500 animate-bounce absolute opacity-20 scale-150"></i>
+                <i data-lucide="bird" class="w-24 h-24 text-orange-500 relative z-10"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-green-700">¡Encontraste a Ramona!</h1>
+            <p class="text-lg text-gray-600">
+                El Doctor Placebo ha huido y tu pájaro está a salvo gracias a ti.
+            </p>
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <div class="bg-gray-100 p-3 rounded-lg">
+                    <p class="text-xs text-gray-500">Puntuación Final</p>
+                    <p class="text-xl font-bold text-green-600" id="final-score">0</p>
+                </div>
+                <div class="bg-gray-100 p-3 rounded-lg">
+                    <p class="text-xs text-gray-500">Errores cometidos</p>
+                    <p class="text-xl font-bold text-red-500" id="final-errors">0</p>
+                </div>
+            </div>
+            <button onclick="goToMenu()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg mt-6">
+                Volver al Menú
+            </button>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- DATOS COMPLETOS ---
+        const rawData = [
+            { cat: "ANTIVIRALES", drug: "ERTAPENEM", ind: "Tratamiento de infecciones en pacientes mayores de 3 años", mech: "Inhibe la síntesis de la pared celular bacteriana tras su unión a las proteínas fijadoras de penicilina (PBPs)" },
+            { cat: "ANTIVIRALES", drug: "MARIBAVIR", ind: "Tratamiento de infecciones causadas por CMV en pacientes adultos que han recibido un trasplante de células madre hematopoyéticas o un trasplante de órganos", mech: "Bloquea proteína cinasa UL97 del CMV" },
+            { cat: "CÁNCER", drug: "ABEMACICLIB", ind: "Cáncer de mama HER2 negativo HR positivos", mech: "Inhibición potente y selectivo de las ciclinas CDK4/CK6" },
+            { cat: "CÁNCER", drug: "ALECTINIB", ind: "Cáncer de pulmón no microcítico (CPNM) positivo para la quinasa del linfoma anaplásico (ALK)", mech: "Inhibidor de la proteína quinasa que inhibe la autofosforilación de ALK y la fosforilación de la vía de señalización mediada por ALK" },
+            { cat: "CÁNCER", drug: "AMIVANTAMAB", ind: "Cáncer de pulmón no microcítico (CPNM) con mutaciones activadoras de inserción en EGFR", mech: "Ac biespecífico dirigido frente a EGFR y MET" },
+            { cat: "CÁNCER", drug: "APALUTAMIDA", ind: "Cáncer de próstata", mech: "Inhibidor del receptor androgénico impidiendo la síntesis de andrógenos" },
+            { cat: "CÁNCER", drug: "ASCIMINIB", ind: "LMC", mech: "Inhibidor de la tirosina cinasa (TKI)" },
+            { cat: "CÁNCER", drug: "ATEZOLIZUMAB", ind: "Carcinoma urotelial, cáncer de pulmón no de células pequeñas localmente avanzado (CPNCP)", mech: "Ac monoclonal antineoplásico que potencia la respuesta de células T, mediante bloqueo de la unión PD-L1 con PD-1" },
+            { cat: "CÁNCER", drug: "AVAPRITINIB", ind: "Tumor del estroma gastrointestinal metastásico no resecable (GIST)", mech: "Inhibidor del receptor de la tirosina quinasa; bloquea la actividad de los receptores PDGFRA en la superficie de las células cancerosas" },
+            { cat: "CÁNCER", drug: "AVELUMAB", ind: "Carcinoma de células de Merkel (CCM) metastásico", mech: "Ac monoclonal IgG1 dirigido contra el ligando proteico inmunomodulador de la superficie celular PD-L1" },
+            { cat: "CÁNCER", drug: "AXICABTAGENE CILOLEUCEL", ind: "Linfoma difuso de célula grande B refractario", mech: "Reprogramación de las células T del paciente con un transgén que codifica un receptor antigénico quimérico (CAR) que identifica y elimina las células que expresan CD19" },
+            { cat: "CÁNCER", drug: "BELANTAMAB MAFODOTINA", ind: "Mieloma múltiple refractario", mech: "Ac monoclonal humanizado IgG1k específico para el Ag de maduración de células B (BCMA)" },
+            { cat: "CÁNCER", drug: "BINIMETINIB", ind: "Melanoma metastásico con mutacion BRAF V600", mech: "Inhibición de la kinasa MEK y supresión de la vía RAF/MEK/ERK" },
+            { cat: "CÁNCER", drug: "BLINATUMOMAB", ind: "Leucemia linfoblástica aguda (LLA) de precursores B con cromosoma Filadelfia negativo", mech: "Ac dirigido hacia los CD19 y CD3 de las células T" },
+            { cat: "CÁNCER", drug: "BRENTUXIMAB VEDOTIN", ind: "Linfoma de Hodgkin", mech: "Ac conjugado que libera un fármaco antineoplásico que origina selectivamente la muerte celular apoptótica de las células tumorales que expresan CD30" },
+            { cat: "CÁNCER", drug: "BRIGATINIB", ind: "Cáncer de pulmón no microcítico con mutacion ALK", mech: "Inhibición de la tirosin kinasa ALK y ROS1" },
+            { cat: "CÁNCER", drug: "CAPIVASERTIB", ind: "Cáncer de mama", mech: "Inhibidor potente y selectivo de la actividad quinasa de las 3 isoformas de la serina/treonina quinasa AKT (AKT1, AKT2 y AKT3)" },
+            { cat: "CÁNCER", drug: "CAPMATINIB", ind: "Cáncer de pulmón no microcítico (CPNM)", mech: "Inhibidor del receptor tirosina quinasa MET" },
+            { cat: "CÁNCER", drug: "CARFILZOMIB", ind: "Mieloma múltiple", mech: "Inhibidor irreversible del proteosoma" },
+            { cat: "CÁNCER", drug: "CEMIPLIMAB", ind: "Cáncer de cérvix, carcinoma cutáneo de células escamosas", mech: "Ac monoclonal que se une a PD-1 impidiendo su unión a PD-L1/2 potenciando la respuesta de células T en el tumor" },
+            { cat: "CÁNCER", drug: "CERITINIB", ind: "Carcinoma de pulmón no microcítico (CPNM) positivo para la quinasa del linfoma anaplásico (ALK)", mech: "Inhibidor de la proteína quinasa que inhibe la autofosforilación de ALK y la fosforilación de la vía de señalización mediada por ALK" },
+            { cat: "CÁNCER", drug: "CILTACABTAGENE AUTOLEUCEL", ind: "Mieloma múltiple", mech: "Inmunoterapia de linfocitos T autólogos modificados genéticamente dirigidos contra BCMA" },
+            { cat: "CÁNCER", drug: "COBIMETINIB", ind: "Melanoma con mutación BRAF V600", mech: "Bloquea la vía MAPK al dirigirse a las quinasas MEK1 y MEK2" },
+            { cat: "CÁNCER", drug: "DACOMITINIB", ind: "Cáncer de pulmón no microcítico con mutación en EGFR", mech: "Inhibidor de la tirosinkinasa del EGFR" },
+            { cat: "CÁNCER", drug: "DALBAVANCINA", ind: "LLC", mech: "Inhibidor de la tirosina cinasa de Bruton (BTK)" },
+            { cat: "CÁNCER", drug: "DARATUMUMAB", ind: "Mieloma múltiple", mech: "Ac monoclonal IgG1 que se une a CD38 inhibiendo el crecimiento de las células tumorales que lo expresan" },
+            { cat: "CÁNCER", drug: "DAROLUTAMIDA", ind: "Cáncer de próstata", mech: "Inhibidor del receptor androgénico (RA)" },
+            { cat: "CÁNCER", drug: "DINUTUXIMAB", ind: "Neuroblastoma", mech: "Ac monoclonal que reacciona específicamente con el gangliósido GD2" },
+            { cat: "CÁNCER", drug: "DOSTARLIMAB", ind: "Cáncer de endometrio (CE) con pérdida del mecanismo de reparación de apareamiento de bases (dMMR) / inestabilidad de microsatélites alta (MSI-H)", mech: "Ac monoclonal IgG4 que se une a receptores de PD-1 y bloquea las interacciones de unión con sus ligandos" },
+            { cat: "CÁNCER", drug: "DURVALUMAB", ind: "Cáncer de pulmón no microcítico, carcinoma vías biliares", mech: "Ac monoclonal IgG1, que bloquea de manera selectiva la interacción de PD-L1 con PD1 y CD80" },
+            { cat: "CÁNCER", drug: "ELACESTRANT", ind: "Cáncer de mama con receptor estrogénico positivo, HER2 negativo, con mutación activadora ESR1", mech: "Antagonista y degradador potente, selectivo y activo del receptor-a de estrógeno (ERa)" },
+            { cat: "CÁNCER", drug: "ELOTUZUMAB", ind: "Mieloma múltiple", mech: "Ac monoclonal IgG1 dirigido contra la molécula de señalización activación de Linfocitos (SLAMF7) también llamada CS1" },
+            { cat: "CÁNCER", drug: "ENCORAFENIB", ind: "Melanoma metastásico con mutacion BRAF V600", mech: "Inhibición de la kinasa BRAF y supresión de la vía RAF/MEK/ERK" },
+            { cat: "CÁNCER", drug: "ENFORTUMAB VEDOTIN", ind: "Cáncer de vejiga", mech: "Ac monoclonal unido al agente quimioterápico monometil auristatina E (MMAE); inhibidor de microtúbulos" },
+            { cat: "CÁNCER", drug: "ENTRECTINIB", ind: "Tumores sólidos con fusión del gen receptor de tirosina quinasa neurotrófico (NTRK), Cáncer de pulmón no microcítico (CPNM) ROS1-positivo", mech: "Inhibidor de los receptores de la tropomiosina tirosina quinasa TRKA, TRKB y TRKC, el protooncogen de la proteína tirosina quinasa ROS1 y la quinasa del linfoma anaplásico (ALK)" },
+            { cat: "CÁNCER", drug: "EPCORITAMAB", ind: "Linfoma B difuso de células grandes (LBDCG)", mech: "Ac biespecífico IgG1 humanizado que se une a un epítopo extracelular específico de CD20 en células B y a CD3 en células T" },
+            { cat: "CÁNCER", drug: "FLUCICLOVINA (18F)", ind: "Uso diagnóstico, estudio de imagen PET", mech: "Aminoácido sintético que es transportado a través de las membranas celulares por transportadores cuya expresión se encuentra incrementada en el cáncer de próstata" },
+            { cat: "CÁNCER", drug: "FRUQUINTINIB", ind: "Cáncer colorrectal metastásico", mech: "Inhibidor selectivo de la tirosina quinasa del VEGFR-1, 2 y 3" },
+            { cat: "CÁNCER", drug: "FUTIBATINIB", ind: "Colangiocarcinoma con fusión o reordenación del FGFR2", mech: "Inhibidor de la tirosina cinasa que inhibe irreversiblemente el FGFR 1, 2, 3 y 4 por unión covalente" },
+            { cat: "CÁNCER", drug: "GLASDEGIB", ind: "Leucemia mieloide aguda (LMA)", mech: "Inhibidor de la vía de transducción de señales Hedgehog (Hh) que conduce a una disminución de la actividad del factor de transcripción del oncogén asociado a glioma" },
+            { cat: "CÁNCER", drug: "GLOFITAMAB", ind: "Linfoma B difuso de células grandes (LBDCG)", mech: "Ac monoclonal biespecífico que se une bivalentemente al CD20 en la superficie de los linfocitos B y monovalentemente al CD3 en el complejo receptor de los linfocitos T" },
+            { cat: "CÁNCER", drug: "GLUCARPIDASA", ind: "Reducción la concentración tóxica de metotrexato plasmático", mech: "Enzima bacteriana recombinante que hidroliza el residuo de glutamato carboxilo terminal del ácido fólico y moléculas estructuralmente relacionadas como MTX" },
+            { cat: "CÁNCER", drug: "GOZETOTIDE", ind: "Cáncer de próstata", mech: "El galio-68(radionucleido) se une a las células que sobreexpresan PSMA (antígeno prostático específico de membrana) que permite obtener imágenes PET" },
+            { cat: "CÁNCER", drug: "IDECABTAGÉN VICLEUCEL", ind: "Mieloma múltiple", mech: "Linfocitos T con receptores de antígeno quimérico (CAR) dirigido al Ag de maduración de linfocitos B (BCMA)" },
+            { cat: "CÁNCER", drug: "INOTUZUMAB OZOGAMICINA", ind: "Leucemia linfoblástica aguda (LLA) de precursores de células B CD22 positivo y leucemia linfoblástica aguda (LLA) de precursores de células B y cromosoma Filadelfia positivo (Ph+)", mech: "Ac monoclonal IgG4 que reconoce específicamente a CD22 humano" },
+            { cat: "CÁNCER", drug: "IPILIMUMAB", ind: "Melanoma, carcinoma de células renales (CCR)", mech: "Inhibidor del punto de control inmunológico CTLA-4, que bloquea las señales inhibitorias de las células-T inducidas a través de la vía CTLA-4 y aumenta el número de células-T efectoras" },
+            { cat: "CÁNCER", drug: "ISATUXIMAB", ind: "Mieloma múltiple", mech: "Ac monoclonal derivado de la IgG1 que se une a un epítopo extracelular específico del receptor CD38" },
+            { cat: "CÁNCER", drug: "IVOSIDENIB", ind: "Leucemia mieloide aguda, colangiocarcinoma", mech: "Inhibidor de la enzima isocitrato deshidrogenasa mutada (que convierte el alfa-cetoglutarato en 2-hidroxiglutarato bloqueando la diferenciación celular y favoreciendo la carcinogénesis)" },
+            { cat: "CÁNCER", drug: "IXAZOMIB", ind: "Mieloma múltiple", mech: "Inhibidor reversible del proteasoma" },
+            { cat: "CÁNCER", drug: "LAROTRECTINIB", ind: "Tumores sólidos con mutaciones en NTRK", mech: "Inhibición del receptor de la tropomiosina quinasa codificadas por los genes NTRK" },
+            { cat: "CÁNCER", drug: "LAZERTINIB", ind: "Cáncer de pulmón no microcítico", mech: "Inhibidor irreversible de la tirosina quinasa (TKI) del EGFR" },
+            { cat: "CÁNCER", drug: "LENVATINIB", ind: "Carcinoma de tiroides", mech: "Inhibe de manera selectiva la actividad quinasa del receptor del factor de crecimiento endotelial vascular (VEGF)" },
+            { cat: "CÁNCER", drug: "LISOCABTAGENE MARALEUCEL", ind: "Tratamiento de linfoma", mech: "Terapia CAR-T, inmunoterapia celular autóloga modificada genéticamente dirigida a CD19" },
+            { cat: "CÁNCER", drug: "LORLATINIB", ind: "Cáncer de pulmón no microcítico avanzado con mutación ALK", mech: "Inhibición de las tirosinkinasas ALK y ROS1" },
+            { cat: "CÁNCER", drug: "LUTECIO (177Lu) OXODOTREOTIDO", ind: "Tumores neuroendocrinos gastroenteropancreáticos positivos al receptor de somatostatina", mech: "Péptido marcado radiactivamente con gran afinidad por 2 subtipos de receptores de somatostatina (sst2)" },
+            { cat: "CÁNCER", drug: "MIDOSTAURINA", ind: "Mastocitosis", mech: "Inhibe múltiples receptores tirosina quinasa, incluyendo FTL3 y KIT quinasas" },
+            { cat: "CÁNCER", drug: "MIRVETUXIMAB SORAVTANSINE", ind: "Cáncer de ovario avanzado", mech: "Unión a FR-a en la superficie de las células cancerosas y posterior internalización del fármaco" },
+            { cat: "CÁNCER", drug: "MOGAMULIZUMAB", ind: "Micosis fungoide o síndrome de Sézary", mech: "Ac anti-CCR4 presente en linfocitos T neoplásicos impidiendo la circulación de los mismos" },
+            { cat: "CÁNCER", drug: "MOSUNETUZUMAB", ind: "Linfoma folicular", mech: "Ac biespecífico anti-CD20/CD3 dirigido a las células B que expresan CD20" },
+            { cat: "CÁNCER", drug: "NECITUMUMAB", ind: "Cáncer de pulmón no microcítico escamoso, EGFR positivo", mech: "Ac monoclonal IgG1 que se une al EGFR humano y bloquea el sitio de unión del ligando" },
+            { cat: "CÁNCER", drug: "NERATINIB", ind: "Cáncer de mama HER2+ adyuvante", mech: "Inhibidor de tirosin kinasa del EGFR, HER2 y HER4 impidiendo la proliferación celular" },
+            { cat: "CÁNCER", drug: "NIRAPARIB", ind: "Cáncer primario de peritoneo, de trompas de Falopio o seroso epitelial de ovario", mech: "Inhibidor de enzimas poli (ADP-ribosa) polimerasas (PARP), PARP-1 y PARP-2, que tiene un papel en la reparación del ADN" },
+            { cat: "CÁNCER", drug: "NIVOLUMAB", ind: "Cáncer de pulmón no microcítico escamoso y melanoma avanzado", mech: "Ac monoclonal que potencia la respuesta de las células T mediante el bloqueo de la unión del receptor PD-1 a los ligandos PD-L1 y PD-L2" },
+            { cat: "CÁNCER", drug: "OLAPARIB", ind: "Tratamiento del cáncer prostático en pacientes que no pueden recibir quimioterapia", mech: "Inhibidor de las enzimas poli (ADP-ribosa) polimerasa (PARP-1, PARP-2, y PARP-3) humanas" },
+            { cat: "CÁNCER", drug: "OLARATUMAB", ind: "Sarcoma de tejidos blandos avanzado", mech: "Ac monoclonal IgG1 antagonista del receptor alfa del factor de crecimiento derivado de las plaquetas (PDGFR-alfa)" },
+            { cat: "CÁNCER", drug: "OSIMERTINIB", ind: "Cáncer de pulmón no microcítico con mutación T790M de EGFR", mech: "Inhibidor irreversible de los receptores del factor de crecimiento epidérmico que tienen mutaciones sensibilizantes (EGFRm) y la mutación T790M" },
+            { cat: "CÁNCER", drug: "PADELIPORFINA", ind: "Adenocarcinoma de próstata unilateral", mech: "Cuando se activa con láser, desencadena una cascada de eventos fisiopatológicos que resultan en una necrosis localizada en días" },
+            { cat: "CÁNCER", drug: "PALBOCICLIB", ind: "Cáncer de mama con receptor hormonal positivo y HER2 negativo", mech: "Inhibidor de CDK4 y CDK6" },
+            { cat: "CÁNCER", drug: "PANOBINOSTAT", ind: "Mieloma múltiple", mech: "Inhibidor de histona deacetilasa" },
+            { cat: "CÁNCER", drug: "PEMBROLIZUMAB", ind: "Melanoma avanzado y cáncer de mama", mech: "Ac monoclonal que potencia la respuesta de las células T mediante el bloqueo de la unión del receptor PD-1 a los ligandos PD-L1 y PD-L2" },
+            { cat: "CÁNCER", drug: "PEMIGATINIB", ind: "Colangiocarcinoma con fusión o reordenación del FGFR2", mech: "Inhibidor de la quinasa del FGFR1, 2 y 3 que inhibe la fosforilación y la señalización del FGFR y disminuye la viabilidad celular en las células que expresan alteraciones genéticas del FGFR" },
+            { cat: "CÁNCER", drug: "PERTUZUMAB/ TRASTUZUMAB", ind: "Cáncer de mama HER2-positivo", mech: "Ac monoclonales de IgG1 recombinante humanizada dirigidos a HER2" },
+            { cat: "CÁNCER", drug: "PIFLUFOLASTAT", ind: "Detección, mediante PET, de lesiones que expresan (PSMA)", mech: "Inhibidor del PSMA. Radionucleido emisor de positrones que hace posible el PET" },
+            { cat: "CÁNCER", drug: "PIRTOBRUNITIB", ind: "Linfoma de células del manto (LCM)", mech: "Inhibidor reversible no covalente de la BTK (proteína de señalización de las vías del receptor de antígenos del linfocito B)" },
+            { cat: "CÁNCER", drug: "PRALSETINIB", ind: "Cáncer de pulmón no microcítico (CPNM) con fusión del gen RET positiva", mech: "Inhibidor tirosina quinasa potente dirigido selectivamente contra las fusiones oncogénicas de RET" },
+            { cat: "CÁNCER", drug: "QUIZARTINIB", ind: "Leucemia mieloide aguda", mech: "Inhibidor del receptor tirosina quinasa FLT3" },
+            { cat: "CÁNCER", drug: "RELATLIMAB/ NIVOLUMAB", ind: "Melanoma", mech: "Ac monoclonal contra receptores PD-1 y LAG-3" },
+            { cat: "CÁNCER", drug: "RELUGOLIX", ind: "Cáncer de próstata", mech: "Antagonista del receptor de la GnRH no peptídico" },
+            { cat: "CÁNCER", drug: "REPOTRECTINIB", ind: "Cáncer de pulmón no microcítico", mech: "Inhibidor del protooncogén proteína tirosina quinasa ROS1, de los receptores de tropomiosina tirosina quinasas (TRK) TRKA, TRKB y TRKC, y de la quinasa del linfoma anaplásico (ALK)" },
+            { cat: "CÁNCER", drug: "RIBOCICLIB", ind: "Cáncer de mama con receptor hormonal positivo y HER2 negativo", mech: "Inhibidor de proteína quinasa que actúa selectivamente sobre las quinasas dependientes de ciclina CDK4 y CDK6" },
+            { cat: "CÁNCER", drug: "RIPRETINIB", ind: "Tumor avanzado del estroma gastrointestinal (GIST)", mech: "Inhibidor de la tirosina quinasa que inhibe el receptor tirosina quinasa del protooncogén KIT y la quinasa PDGFRA" },
+            { cat: "CÁNCER", drug: "RUCAPARIB", ind: "Cáncer de ovario epitelial, de trompa de Falopio o peritoneal primario", mech: "Inhibidor de las enzimas poli(ADP-ribosa) polimerasa (PARP), como PARP-1, PARP-2 y PARP-3, que desempeñan un papel en la reparación del ADN" },
+            { cat: "CÁNCER", drug: "RUPACARIB", ind: "Cáncer de ovario, trompas de Falopio y peritoneo", mech: "Inhibidor de las enzimas PARP, PARP1 y PARP2 evitando al reparación y replicación del DNA originando la apoptosis celular" },
+            { cat: "CÁNCER", drug: "SACITUZUMAB GOVITECÁN", ind: "Cáncer de mama triple negativo", mech: "Unión a células cancerosas que expresan Trop 2; se internaliza y libera SN-38 que interactúa con la topoisomerasa I e impide que las roturas de cadena simple del ADN se liguen de nuevo" },
+            { cat: "CÁNCER", drug: "SELINEXOR", ind: "Mieloma múltiple", mech: "Inhibidor selectivo de la exportación nuclear (SINE) covalente y reversible que bloquea específicamente la exportina 1 (XPO1)" },
+            { cat: "CÁNCER", drug: "SELPERCATINIB", ind: "Cáncer de pulmón no microcítico (CPNM) con fusión del gen RET positiva, cáncer de tiroides avanzado con fusión del gen RET positiva", mech: "Inhibidor del receptor tirosina quinasa RET" },
+            { cat: "CÁNCER", drug: "SONIDEGIB", ind: "Carcinoma basocelular (CBC)", mech: "Inhibe la vía de señalización Hedgehog" },
+            { cat: "CÁNCER", drug: "SORAFENIB ACCORD", ind: "Tratamiento carcinoma hepatocelular y células renales", mech: "Inhibidor multiquinasa que reduce la proliferación celular tumoral in vitro" },
+            { cat: "CÁNCER", drug: "SOTORASIB", ind: "Cáncer de pulmón no microcítico (CPNM) con mutación KRAS G12C", mech: "Inhibidor selectivo de KRAS G12C" },
+            { cat: "CÁNCER", drug: "TALAZOPARIB", ind: "Cáncer de mama HER2 negativo", mech: "Inhibidor de las enzimas PARP, PARP1 y PARP2 que participan en las vías de señalización de la respuesta celular al daño del ADN" },
+            { cat: "CÁNCER", drug: "TALAZOPARIB", ind: "Cáncer de mama con mutación en BRCA y HER2 negativo", mech: "Inhibidor de las enzimas PARP, PARP1 y PARP2 evitando al reparación y replicación del DNA originando la apoptosis celular" },
+            { cat: "CÁNCER", drug: "TALIMOGENE LAHERPAREPVEC", ind: "Melanoma irresecable y metástasis", mech: "Virus oncolítico derivado del VHS-1 modificado para replicarse dentro de los tumores y producir la proteína estimuladora inmune humana GM-CSF" },
+            { cat: "CÁNCER", drug: "TALQUETAMAB", ind: "Mieloma múltiple", mech: "Ac biespecífico de IgG4 prolina, alanina, alanina dirigido contra GPRC5D y el receptor CD3 de los linfocitos T" },
+            { cat: "CÁNCER", drug: "TEBENTAFUSP", ind: "Tratamiento del melanoma uveal irresecable", mech: "Proteína de fusión biespecífica, que consta de un receptor de linfocitos T fusionado a un fragmento de anticuerpo dirigido al CD3" },
+            { cat: "CÁNCER", drug: "TECARTUS", ind: "Linfoma de células del manto (LCM)", mech: "Inmunoterapia de células T autólogas modificadas genéticamente dirigida contra CD19" },
+            { cat: "CÁNCER", drug: "TECLISTAMAB", ind: "Mieloma múltiple", mech: "Ac contra Ag de maduración de células B (BCMA) en las células de mieloma y el CD3 en la superficie de las células T" },
+            { cat: "CÁNCER", drug: "TEGAFUR/ GIMERACIL/ OTERACILO", ind: "Cáncer colorrectal y gástrico", mech: "Tegafur es un medicamento citotóxico, se transforma en el fármaco fluorouracilo en el organismo. Tipiracilo y Oteracilo inhiben enzimas de degradación." },
+            { cat: "CÁNCER", drug: "TEPOTINIB", ind: "Tratamiento de cáncer no microcítico de pulmón", mech: "Inhibidor reversible de tipo I de MET" },
+            { cat: "CÁNCER", drug: "TISAGENCLEUCEL", ind: "Leucemia linfoblastica aguda de células B en recaída, linfoma difuso de célula grande B refractario", mech: "Tratamiento inmunocelular autólogo. Reprogramación de las células T del paciente con un transgén que codifica un receptor antigénico quimérico (CAR) que identifica y elimina las células que expresan CD19" },
+            { cat: "CÁNCER", drug: "TISLELIZUMAB", ind: "Carcinoma de células escamosas de esófago", mech: "Ac monoclonal humanizado IgG4 frente al dominio extracelular PD-1" },
+            { cat: "CÁNCER", drug: "TIVOZANIB HIDROCLORURO MONOHIDRATO", ind: "Carcinoma avanzado de células renales", mech: "Inhibidor de proteína quinasa, bloqueo de receptores del factor de crecimiento endotelial vascular" },
+            { cat: "CÁNCER", drug: "TORIPALIMAB", ind: "Cáncer de nasofaringe", mech: "Ac monoclonal IgG4 humanizado que se une al receptor de la proteína PD-1 y bloquea su interacción con PD-L1 y PD-L2" },
+            { cat: "CÁNCER", drug: "TRASTUZUMAB DERUXTECÁN", ind: "Cáncer de mama HER2-positivo, cáncer gástrico", mech: "Anticuerpo IgG1 humanizado dirigido a HER2 unido a deruxtecán, un inhibidor de la topoisomerasa I (DXd) que se une mediante un enlazador escindible formado por tetrapéptidos" },
+            { cat: "CÁNCER", drug: "TREMELIMUMAB", ind: "Carcinoma hepatocelular (CHC), cáncer de pulmón no microcítico", mech: "Ac IgG2 selectivo que bloquea la interacción de CTLA-4 con CD80 y CD86, potenciando la activación y proliferación de los linfocitos T" },
+            { cat: "CÁNCER", drug: "TRIFLURIDINA/ TIPIRACILO", ind: "Cáncer colorrectal metastásico (CRC)", mech: "Interfiere con la función del ADN y previene la proliferación celular. Tipiracilo inhibe la degradación de trifluridina" },
+            { cat: "CÁNCER", drug: "TUCATINIB", ind: "Cáncer de mama HER2-positivo", mech: "Inhibidor de la tirosina quinasa reversible, potente y selectivo de HER2" },
+            { cat: "CÁNCER", drug: "VENETOCLAX", ind: "Leucemia linfocítica crónica (LLC)", mech: "Inhibe a BCL-2 (célula-B CLL/linfoma 2), una proteína anti-apoptosis sobre expresada por los linfocitos B en LLC" },
+            { cat: "CARDIOVASCULAR", drug: "ALIROCUMAB", ind: "Hipercolesterolemia primaria y dislipidemia mixta", mech: "Ac monoclonal que se une selectivamente a la proproteína convertasa subtilisina kexina tipo 9 (PCSK9)" },
+            { cat: "CARDIOVASCULAR", drug: "ANDEXANET ALFA", ind: "Reversión de la anticoagulación por fármacos inhibidores de Xa", mech: "Análogo del factor Xa sin actividad enzimática que se une al inhibidor del factor Xa" },
+            { cat: "CARDIOVASCULAR", drug: "APROCITENTÁN", ind: "Hipertensión", mech: "ARE dual que inhibe la fijación de ET-1 a los receptores ETA y ETB" },
+            { cat: "CARDIOVASCULAR", drug: "DAPAGLIFLOZINA", ind: "DM2, insuficiencia cardiaca, IRC", mech: "Inhibidores del cotransportador de sodio glucosa 2 (SGLT2)" },
+            { cat: "CARDIOVASCULAR", drug: "EVINACUMAB", ind: "Reducir el C-LDL en pacientes con hipercolesterolemia familiar homocigótica (HFHo)", mech: "Ac monoclonal humano recombinante, que se une específicamente e inhibe la ANGPTL3 (proteínas similares a la angiopoyetina que se expresa principalmente en el hígado e inhibe la lipoproteína lipasa y la lipasa endotelial)" },
+            { cat: "CARDIOVASCULAR", drug: "EVOLOCUMAB", ind: "Hipercolesterolemia y dislipidemia mixta", mech: "Ac monoclonal que se une selectivamente a la proproteína convertasa subtilisina kexina tipo 9 (PCSK9)" },
+            { cat: "CARDIOVASCULAR", drug: "FINERENONA", ind: "Enfermedad renal crónica asociada a diabetes tipo 2", mech: "Antagonista selectivo no esteroideo del receptor de mineralocorticoides" },
+            { cat: "CARDIOVASCULAR", drug: "MAVACAMTEM", ind: "Miocardiopatía hipertrófica obstructiva (MCHO) sintomática", mech: "Inhibidor selectivo, alostérico y reversible de la miosina cardiaca" },
+            { cat: "CARDIOVASCULAR", drug: "SELEXIPAG", ind: "Hipertensión arterial pulmonar (HAP)", mech: "Agonista selectivo de los receptores de prostaciclina" },
+            { cat: "CARDIOVASCULAR", drug: "VERICIGUAT", ind: "Insuficiencia cardiaca crónica sintomática en pacientes adultos con fracción de eyección reducida", mech: "Estimulador de la guanilato ciclasa soluble (GCs)" },
+            { cat: "COVID-19", drug: "ANAKINRA", ind: "Tratamiento de la enfermedad por COVID-19", mech: "Antagonista del receptor humano para la interleucina 1" },
+            { cat: "COVID-19", drug: "CASIRIVIMAB/ IMDEVIMAB", ind: "Tratamiento y prevención de enfermedad por COVID-19", mech: "Ac monoclonales recombinantes humanos que no tienen modificadas las regiones Fc. Se unen a epitopos no superpuestos del dominio de unión al receptor de la proteína spike (RBD) del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "COMIRNATY", ind: "Inmunización activa para prevenir la COVID-19", mech: "El ARNm con nucleósidos modificados posibilitan la entrada del ARN no replicante a las células huésped para dirigir la expresión transitoria del antígeno S del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "COVID-19 VACCINE JANSSEN", ind: "Inmunización activa para prevenir la COVID-19", mech: "Vacuna recombinante producida a partir de otro adenovirus modificados para que contenga el gen que produce la proteína espicular del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "ELASOMERÁN", ind: "Inmunización activa para prevenir la COVID-19", mech: "ARNm encapsulado que codifica la proteína de las espículas del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "NUVAXOVID", ind: "Inmunización activa para prevenir la COVID-19", mech: "Proteína recombinante de la espícula del SARS-CoV-2 purificada y de longitud completa estabilizada en su conformación prefusión" },
+            { cat: "COVID-19", drug: "REGDANVIMAB", ind: "Tratamiento de pacientes adultos con la enfermedad por COVID-19", mech: "Ac monoclonal IgG1 humano recombinante que se fija al dominio de unión del receptor (RBD) de la proteína de las espículas del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "REMDESIVIR", ind: "Tratamiento de la enfermedad por COVID-19", mech: "Inhibidor de la polimerasa dependiente de ARN viral" },
+            { cat: "COVID-19", drug: "RITONAVIR/ NIRMATRELVIR", ind: "Tratamiento de la enfermedad por COVID-19", mech: "Inhibidor peptidomimético de la proteasa principal del SARS-CoV-2 y Ritonavir inhibe el metabolismo de nirmatrelvir mediado por el CYP3A" },
+            { cat: "COVID-19", drug: "SOTROVIMAB", ind: "Tratamiento de la enfermedad por COVID-19", mech: "Ac monoclonal IgG1 humanizado que se une a un epítopo en el dominio de unión al receptor (RBD) de la proteína spike del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "TOCILIZUMAB", ind: "Tratamiento de la enfermedad por COVID-19", mech: "Ac monoclonal IgG1 recombinante humanizado anti receptor de IL-6 humana" },
+            { cat: "COVID-19", drug: "VAXZEVRIA", ind: "Inmunización activa para prevenir la COVID-19", mech: "Vacuna monovalente compuesta por un vector único de adenovirus, recombinante y no replicativo que codifica para la glicoproteina S del SARS-CoV-2" },
+            { cat: "COVID-19", drug: "VidPrevtyn Beta", ind: "Dosis de refuerzo para la inmunización activa para prevenir la COVID-19 en adultos que hayan recibido una vacuna COVID-19 de ARNm", mech: "Proteína de la espícula del SARS-CoV-2 producida por tecnología de ADN recombinante" },
+            { cat: "DERMATOLOGÍA", drug: "ABROCITINIB", ind: "Dermatitis atópica", mech: "Inhibidor de JAK" },
+            { cat: "DERMATOLOGÍA", drug: "BIMEKIZUMAB", ind: "Psoriasis", mech: "Ac monoclonal humanizado IgG1 que inhibe citocinas proinflamatorias, IL-17A, IL-17F e IL-17AF y bloquea su interacción con el complejo receptor IL-17RA/IL-17RC" },
+            { cat: "DERMATOLOGÍA", drug: "BRODALUMAB", ind: "Psoriasis", mech: "Ac monoclonal IgG2 que se une a IL-17RA" },
+            { cat: "DERMATOLOGÍA", drug: "DELGOCITINIB", ind: "Eccema crónico de manos", mech: "Pan-inhibidor de JAK1, JAK2, JAK3 y tirosinacinasa 2 (TYK2)" },
+            { cat: "DERMATOLOGÍA", drug: "DUPILUMAB", ind: "Dermatitis atópica", mech: "Ac monoclonal recombinante humano IgG4 que inhibe la señalización de la IL-4 e IL-13" },
+            { cat: "DERMATOLOGÍA", drug: "DUPILUMAB", ind: "Dermatitis atópica de moderada a grave", mech: "Ac monoclonal recombinante de la IgG4 humana que inhibe la señalización de la interleucina-4 y la interleucina-13" },
+            { cat: "DERMATOLOGÍA", drug: "EXTRACTO DE CORTEZA DE ABEDUL", ind: "Epidermólisis bullosa", mech: "Se desconoce" },
+            { cat: "DERMATOLOGÍA", drug: "GUSELKUMAB", ind: "Psoriasis", mech: "Ac monoclonal IgG1k anti interleucina que se une específicamente a la IL-23" },
+            { cat: "DERMATOLOGÍA", drug: "IXEKIZUMAB", ind: "Psoriasis", mech: "Ac monoclonal que se une a IL-17A e IL-17A/F" },
+            { cat: "DERMATOLOGÍA", drug: "LEBRIKIZUMAB", ind: "Dermatitis atópica", mech: "IgG4 que se une con alta afinidad a la IL-13 e inhibe selectivamente su señalización a través del receptor heterodímero IL-4 alfa/IL-13 alfa 1" },
+            { cat: "DERMATOLOGÍA", drug: "RISANKIZUMAB", ind: "Psoriasis", mech: "Unión a la subunidad p19 de la IL23 inhibiendo la interacción con su receptor y la liberación de citoquinas inflamatorias" },
+            { cat: "DERMATOLOGÍA", drug: "SPESOLIMAB", ind: "Psoriasis", mech: "Ac monoclonal IgG1 humanizado que bloquea la señalización del receptor de la IL36" },
+            { cat: "DERMATOLOGÍA", drug: "TIRBANIBULINA", ind: "Queratosis actínica no hiperqueratósica y no hipertrófica", mech: "Disgregación de los microtúbulos mediante la unión directa a la tubulina, lo que provoca la interrupción del ciclo celular y la apoptosis de las células proliferativas" },
+            { cat: "DERMATOLOGÍA", drug: "TRALOKINUMAB", ind: "Dermatitis atópica", mech: "Ac monoclonal de tipo IgG4 completamente humano que se une específicamente a la IL-13" },
+            { cat: "DIGESTIVO", drug: "ÁCIDO OBETICÓLICO", ind: "Colangitis biliar primaria", mech: "Actúa sobre el receptor X farnesoide (FXR) activándolo, reduciendo así la producción de bilis en el hígado" },
+            { cat: "DIGESTIVO", drug: "DARVADSTROCEL", ind: "Fístulas perianales complejas en enfermedad de Crohn", mech: "Células madre del tejido adiposo que impiden la proliferación de linfocitos y reducen la liberación de citoquinas pro-inflamatorias" },
+            { cat: "DIGESTIVO", drug: "ELUXADOLINA", ind: "Síndrome del intestino irritable", mech: "Agonista de receptores opioides mu (µOR) y opioides kappa (kOR), y antagonistas de los delta (dOR)" },
+            { cat: "DIGESTIVO", drug: "ETRASIMOV", ind: "Colitis ulcerosa", mech: "Modulador de los receptores de esfingosina 1-fosfato (S1P) que se une a los receptores S1P 1, 4 y 5, y es un agonista equilibrado de la proteína G y la beta-arrestina en S1P1. Bloquea de forma parcial y reversible la capacidad de los linfocitos para salir de los órganos linfoides, reduciendo el número de linfocitos en sangre periférica y disminuyendo así el número de linfocitos activados en el tejido" },
+            { cat: "DIGESTIVO", drug: "NALDEMEDINA", ind: "Estreñimiento inducido por opioides", mech: "Antagonista de los receptores opioides mu de acción periférica" },
+            { cat: "ENDOCRINOLOGÍA", drug: "BUROSUMAB", ind: "Hipofosfatemia ligada al cromosoma X", mech: "Ac monoclonal que se une e inhibe el factor de crecimiento fibroblástico 23" },
+            { cat: "ENDOCRINOLOGÍA", drug: "ETELCALCETIDE", ind: "Hiperparatiroidismo secundario (SHPT)", mech: "Reduce la secreción de PTH a través de la activación de los receptores sensibles al calcio" },
+            { cat: "ENDOCRINOLOGÍA", drug: "DOSTARLIMAB", ind: "Cáncer de endometrio", mech: "Ac monoclonal IgG4 que se une a receptores PD-1 bloqueando las interacciones de unión con sus ligandos PD-L1 y PD-L2" },
+            { cat: "ENDOCRINOLOGÍA", drug: "GIVLAARI", ind: "Porfiria hepática aguda (PHA)", mech: "Ácido ribonucleico pequeño de interferencia (ARNip) que causa la degradación del ARNm para el ácido aminolevulínico sintasa 1 (ALAS1) en hepatocitos" },
+            { cat: "ENDOCRINOLOGÍA", drug: "MACIMORELINA", ind: "Diagnóstico del déficit de hormona del crecimiento", mech: "Estimula la liberación de GH al estimular los receptores secretagogos de La GH" },
+            { cat: "ENDOCRINOLOGÍA", drug: "METRELEPTINA", ind: "Déficit de leptina (Síndrome de Lawrence, síndrome de Beradinelli-Seip, sindrome de Barraquer, Simons)", mech: "Análogo de leptina que estimula los receptores de leptina humana y activa la vía de JAK-STAT" },
+            { cat: "ENDOCRINOLOGÍA", drug: "OSILODROSTAT", ind: "Síndrome de Cushing", mech: "Inhibición de la 11B-hidroxilasa responsable del paso final en la síntesis de cortisol" },
+            { cat: "ENDOCRINOLOGÍA", drug: "ROMOSOZUMAB", ind: "Osteoporosis", mech: "Inhibición de la esclerostina, aumentando la actividad de osteoblastos" },
+            { cat: "ENDOCRINOLOGÍA", drug: "SEMAGLUTIDA", ind: "Complemento a una dieta baja en calorías y a un aumento de la actividad física para el control de peso (pérdida y mantenimiento)", mech: "Agonista del receptor de GLP-1 que se une de forma selectiva al receptor de GLP-1, el objetivo del GLP-1 nativo, y lo activa" },
+            { cat: "ENDOCRINOLOGÍA", drug: "TELOTRISTAT DE ETILO", ind: "Diarrea asociada al sindrome carcinoide", mech: "Inhibe las hidrolasas L-triptófano (TPH1 y TPH2), limitantes de la biosintesis de serotonina" },
+            { cat: "ENDOCRINOLOGÍA", drug: "TIRZEPATIDA", ind: "DM2", mech: "Agonista dual de acción prolongada de los receptores GIP y GLP-1" },
+            { cat: "ENDOCRINOLOGÍA", drug: "VELMANASA ALFA", ind: "Alfa-manosidosis", mech: "Tratamiento enzimático sustitutivo de la alfa-manosidasa" },
+            { cat: "ENDOCRINOLOGÍA", drug: "VESTRONIDASA ALFA", ind: "Mucopolisacaridosis VII (Síndrome de Sly)", mech: "Tratamiento enzimático sustitutivo de la beta-glucuronidasa" },
+            { cat: "HEMATOLOGÍA", drug: "ACALABRUTINIB", ind: "Leucemia linfocítica crónica (LLC)", mech: "Inhibidor selectivo de la tirosina-quinasa de Bruton (BTK)" },
+            { cat: "HEMATOLOGÍA", drug: "ALBUTREPENONACOG ALFA", ind: "Hemofilia B", mech: "Reemplazo de factor IX" },
+            { cat: "HEMATOLOGÍA", drug: "ASCIMINIB", ind: "Leucemia mieloide crónica en fase crónica con cromosoma Filadelfia positivo (LMC-FC Ph+)", mech: "Inhibidor potente de la tirosina cinasa ABL/BCR::ABL1" },
+            { cat: "HEMATOLOGÍA", drug: "AVATROMBOPAG", ind: "Trombocitopenia grave", mech: "Agonista del receptor de la trombopoyetina estimulando la proliferación de los megacariocitos" },
+            { cat: "HEMATOLOGÍA", drug: "CANGRELOR", ind: "Reducción de eventos trombóticos cardiovasculares", mech: "Inhibidor directo del receptor plaquetario P2Y12" },
+            { cat: "HEMATOLOGÍA", drug: "CAPLACIZUMAB", ind: "Púrpura trombocitopénica trombótica adquirida", mech: "Inhibición de la interacción entre el factor Von Willebrand con las plaquetas" },
+            { cat: "HEMATOLOGÍA", drug: "CONCIZUMAB", ind: "Profilaxis de hemorragias en pacientes con hemofilia A y B", mech: "Ac contra el inhibidor de la vía del factor tisular (anti-TFPI)" },
+            { cat: "HEMATOLOGÍA", drug: "CRIZANLIZUMAB", ind: "Prevención de las crisis vasooclusivas (CVO) recurrentes de enfermedad de células falciformes", mech: "Ac monoclonal IgG2 kappa que se une con alta afinidad a P-selectina y bloquea la interacción con sus ligandos" },
+            { cat: "HEMATOLOGÍA", drug: "CROVALIMAB", ind: "Hemoglobinuria paroxística nocturna", mech: "Ac monoclonal humanizado recombinante inmunoglobulina G1(IgG1) que se une de forma específica y con gran afinidad a C5 del sistema del complemento" },
+            { cat: "HEMATOLOGÍA", drug: "DAMOCTOCOG ALFA PEGOL", ind: "Hemofilia A", mech: "Reemplazo factor VIII" },
+            { cat: "HEMATOLOGÍA", drug: "DUVELISIB", ind: "Leucemia linfática crónica (LLC) y Linfoma folicular (LF)", mech: "Inhibidor dual de la fosfatidilinositol 3-quinasa" },
+            { cat: "HEMATOLOGÍA", drug: "EDOXABAN", ind: "Prevención de ictus y embolia sistémica, tratamiento de trombosis venosa profunda (TVP) y embolismo pulmonar (EP)", mech: "Inhibidor reversible altamente selectivo del factor Xa" },
+            { cat: "HEMATOLOGÍA", drug: "EFMOROCTOCOG ALFA", ind: "Hemofilia A", mech: "Reemplazo de factor VIII" },
+            { cat: "HEMATOLOGÍA", drug: "EFTRENONACOG ALFA", ind: "Hemofilia B", mech: "Reemplazo de factor IX" },
+            { cat: "HEMATOLOGÍA", drug: "EMICIZUMAB", ind: "Hemofilia A", mech: "Unión al factor IX activado y al factor X" },
+            { cat: "HEMATOLOGÍA", drug: "EPTACOG BETA", ind: "Episodios de sangrado y prevención de sangrados en pacientes con Hemofilia A y B cuando se someten a cirugía o a un procedimiento invasivo", mech: "Proteína similar al factor de coagulación VII" },
+            { cat: "HEMATOLOGÍA", drug: "FEDRATINIB", ind: "Esplenomegalia o síntomas relacionados con mielofibrosis", mech: "Inhibidor de la cinasa con actividad contra la cinasa Janus 2 (JAK2) y la tirosina cinasa 3 similar a FMS (FLT3)" },
+            { cat: "HEMATOLOGÍA", drug: "FOSTAMATINIB", ind: "Trombocitopenia inmunitaria crónica (PTI)", mech: "Inhibición de tirosinkinasa del bazo (SYK)" },
+            { cat: "HEMATOLOGÍA", drug: "GENTUZUMAB OZOGAMICINA", ind: "Leucemia mieloide aguda CD-33 positiva de novo", mech: "Unión a linfoblastos CD33 positivos y muerte celular por ruptura del ADN" },
+            { cat: "HEMATOLOGÍA", drug: "GILTERITINIB", ind: "Leucemia mieloide aguda con mutacion FLT3", mech: "Inhibición de tirosinkinasa de FLT3" },
+            { cat: "HEMATOLOGÍA", drug: "IDARUCIZUMAB", ind: "Reversión de los efectos de dabigatrán", mech: "Fragmento de Ac monoclonal que se une al dabigatrán y a sus metabolitos" },
+            { cat: "HEMATOLOGÍA", drug: "LONCASTUXIMAB TESIRINE", ind: "Linfoma B difuso de células grandes (LBDCG) y linfoma B de alto grado (LBAG)", mech: "Conjugado anticuerpo-fármaco (CAF) dirigido a CD19" },
+            { cat: "HEMATOLOGÍA", drug: "LONOCTOCOG ALFA", ind: "Hemofilia A", mech: "Reemplazo de factor VIII" },
+            { cat: "HEMATOLOGÍA", drug: "LUSPATERCEPT", ind: "Anemia dependiente de transfusiones debida a síndromes mielodisplásicos (SMD)", mech: "Proteína de fusión recombinante que se une a ligandos seleccionados de la superfamilia del factor de crecimiento y transformación-B (TGF-B)" },
+            { cat: "HEMATOLOGÍA", drug: "LUSUTROMBOPAG SHIONOGI", ind: "Trombocitopenia grave", mech: "Agonista de los receptores de trombopoyetina (TPO)" },
+            { cat: "HEMATOLOGÍA", drug: "MITAPIVAT", ind: "Deficiencia de piruvato quinasa", mech: "Actúa uniéndose directamente al tetrámero de la piruvato quinasa" },
+            { cat: "HEMATOLOGÍA", drug: "NONACOG BETA PEGOL", ind: "Hemofilia B", mech: "Reemplazo del factor IX" },
+            { cat: "HEMATOLOGÍA", drug: "PEGCETACOPLAN", ind: "Tratamiento hemoglobinuria paroxística nocturna", mech: "Amplia regulación de la cascada del complemento actuando de forma proximal al C3b y a la formación del CAM, controlando así los mecanismos que conducen a la hemólisis extravascular e intravascular" },
+            { cat: "HEMATOLOGÍA", drug: "POLATUZUMAB VEDOTINA", ind: "Linfoma Difuso B", mech: "Actúa contra CD79b presente en los linfocitos B tumorales favoreciendo la acción de la vedotina en estas células" },
+            { cat: "HEMATOLOGÍA", drug: "RAVULIZUMAB", ind: "Hemoglobinuria paroxística nocturna", mech: "Unión a C5 inhibiendo la cascada del complemento" },
+            { cat: "HEMATOLOGÍA", drug: "ROPEGINTERFERON ALFA-2B", ind: "Policitemia vera", mech: "Unión al receptor del interferón alfa activando la vía JAK-STAT" },
+            { cat: "HEMATOLOGÍA", drug: "ROXADUSTAT", ind: "Anemia sintomática asociada a enfermedad renal crónica (ERC)", mech: "Inhibidor de la prolil hidroxilasa del factor inducible por hipoxia (HIF-PHI)" },
+            { cat: "HEMATOLOGÍA", drug: "RURIOCTOCOG ALFA PEGOL", ind: "Hemofilia A", mech: "Reemplazo del factor VIII" },
+            { cat: "HEMATOLOGÍA", drug: "SUSOCTOCOG ALFA", ind: "Hemofilia adquirida causada por Ac contra el factor VIII", mech: "Factor VIII recombinante que forma un complejo con el FVW que acelera la conversión del factor X en factor X activado" },
+            { cat: "HEMATOLOGÍA", drug: "SUTIMLIMAB", ind: "Anemia hemolítica", mech: "Ac monoclonal que se une a C1s" },
+            { cat: "HEMATOLOGÍA", drug: "TAFASITAMAB", ind: "Linfoma difuso de linfocitos B grandes (LDLBG)", mech: "Ac monoclonal con Fc potenciada selectivo para el antígeno de CD19 expresado en la superficie de los linfocitos pre-B y B maduros" },
+            { cat: "HEMATOLOGÍA", drug: "TAGRAXOFUSP", ind: "Neoplasia de células dendríticas plasmocitoides blásticas (NCDPB)", mech: "Actúa sobre las células de expresión de CD123. Inhibe de forma irreversible la síntesis proteica al desactivar el factor de prolongación 2 (EF2)" },
+            { cat: "HEMATOLOGÍA", drug: "TUROCTOCOG ALFA PEGOL", ind: "Hemofilia A", mech: "Reemplazo de factor VIII" },
+            { cat: "HEMATOLOGÍA", drug: "VADADUSTAT", ind: "Anemia sintomática asociada a enfermedad renal crónica", mech: "Inhibidor de la prolil-hidroxilasa del factor inducible por hipoxia estimulando la producción endógena de eritropoyetina (EPO)" },
+            { cat: "HEMATOLOGÍA", drug: "VALOCTOCOGENE ROXAPARVOVEC", ind: "Hemofilia", mech: "Virus modificado para que contenga el gen del factor VIII" },
+            { cat: "HEMATOLOGÍA", drug: "VONICOG ALFA", ind: "Enfermedad de Von Willebrand", mech: "Factor de Von Willebrand humano recombinante (FVWr)" },
+            { cat: "HEMATOLOGÍA", drug: "VOXELOTOR", ind: "Anemia hemolítica", mech: "Unión reversible a la hemoglobina, estabilizando el estado de hemoglobina oxigenada y evitando la polimerización de la hemoglobina S, al aumentar la afinidad de la hemoglobina por el oxígeno" },
+            { cat: "HEMATOLOGÍA", drug: "ZANUBRUTINIB", ind: "Macroglobulinemia de Waldenström (MW)", mech: "Inhibidor de la tirosina cinasa de Bruton (BTK)" },
+            { cat: "HEPATOLOGÍA", drug: "ODEVIXIBAT", ind: "Colestasis intrahepática familiar progresiva (CIFP)", mech: "Inhibidor reversible, potente y selectivo del transportador ileal de ácidos biliares" },
+            { cat: "INFECCIONES", drug: "BALOXAVIR MARBOXIL", ind: "Tratamiento y profilaxis post-exposición de gripe", mech: "Actúa sobre la endonucleasa cap-dependiente (ECD), una enzima específica del virus de la gripe del complejo de la ARNpol viral" },
+            { cat: "INFECCIONES", drug: "BEZLOTOXUMAB", ind: "Prevención infección por Clostridium difficile", mech: "Ac monoclonal que bloquea la acción de la toxina B de C. difficile" },
+            { cat: "INFECCIONES", drug: "BULEVIRTIDA", ind: "Infección crónica por virus de la hepatitis delta (VHD)", mech: "Bloquea la entrada del VHB y el VHD en los hepatocitos uniéndose e inactivando el NTCP, un transportador de sales biliares" },
+            { cat: "INFECCIONES", drug: "CABOTEGRAVIR", ind: "Tratamiento de la infección por el VIH-1", mech: "Inhibición de la integrasa del VIH" },
+            { cat: "INFECCIONES", drug: "DORAVIRINA", ind: "Tratamiento de pacientes infectados por el VIH-1", mech: "Inhibidor de la transcriptasa inversa del VIH-1 no nucleósido" },
+            { cat: "INFECCIONES", drug: "ELBASVIR/GRAZOPREVIR", ind: "Hepatitis C", mech: "Un inhibidor de la proteína NS5A y un inhibidor de la proteasa NS3/4A" },
+            { cat: "INFECCIONES", drug: "FOSFATO DE TEDIZOLIDA", ind: "Infecciones bacterianas agudas de la piel (Gram+)", mech: "Inhibie la biosíntesis de la pared celular, uniéndose a la subunidad 50S del ribosoma" },
+            { cat: "INFECCIONES", drug: "FOSTEMSAVIR", ind: "VIH-1 multirresistente", mech: "Unión directa a la subunidad gp120 de la glicoproteína gp160 de la envoltura del VIH-1 e inhibición selectiva entre el virus y el receptor celular CD4" },
+            { cat: "INFECCIONES", drug: "GLECAPREVIR / PIBRENTASVIR", ind: "Hepatitis C (VHC)", mech: "Un inhibidor de la proteasa NS3/4A del VHC y un inhibidor de la proteína NS5A del VHC" },
+            { cat: "INFECCIONES", drug: "IBALIZUMAB", ind: "VIH-1 multirresistente", mech: "Ac monoclonal que se une a un epítopo localizado primordialmente en el dominio 2 del receptor CD4, inhibiendo la entrada del VIH" },
+            { cat: "INFECCIONES", drug: "LEFAMULINA", ind: "Neumonía extrahospitalaria (NEH)", mech: "Inhibidor de la síntesis proteica bacteriana interaccionando con los sitios A- y P- del centro de la peptidil transferasa (PTC) en la parte central del dominio V del ARNr 23S" },
+            { cat: "INFECCIONES", drug: "LENACAPAVIR", ind: "VIH-1 multirresistente", mech: "Inhibidor selectivo multifase de la función de la cápside del VIH-1" },
+            { cat: "INFECCIONES", drug: "LETERMOVIR", ind: "Profilaxis de la reactivación del citomegalovirus (CMV)", mech: "Actúa sobre la ADN-terminasa del CMV e inhibe la replicación viral" },
+            { cat: "INFECCIONES", drug: "OBILTOXAXIMAB", ind: "Carbunco pulmonar provocado por Bacillus anthracis", mech: "Ac monoclonal que se une al antígeno protector (PA) de B. anthracis" },
+            { cat: "INFECCIONES", drug: "ONASEMNOGÉN ABEPARVOVEC", ind: "Atrofia muscular espinal (AME)", mech: "Terapia génica; introducir una copia funcional del gen de supervivencia de las motoneuronas (SMN1)" },
+            { cat: "INFECCIONES", drug: "PRETOMANID", ind: "Tuberculosis (TB) pulmonar extremadamente resistente", mech: "Inhibición de la síntesis de lípidos de la pared celular en condiciones aerobias y la formación de especies reactivas del nitrógeno en condiciones anaerobias" },
+            { cat: "INFECCIONES", drug: "SOFOSBUVIR / VELPATASVIR/ VOXILAPREVIR", ind: "Hepatitis C (VHC)", mech: "Un inhibidor de la proteína NS5B RNA polimerasa del virus de la hepatitis C (VHC), un inhibidor de la proteína NS5A del virus y un inhibidor de la proteasa NS3/4A" },
+            { cat: "INFECCIONES", drug: "TECOVIRIMAT", ind: "Viruela", mech: "Interfiere con la proteína VP37 que se encuentra en la superficie de los ortopoxvirus" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "ANIFROLUMAB", ind: "Lupus eritematoso sistémico (LES) con autoanticuerpos positivos", mech: "Ac monoclonal humano IgG1 kappa que se une a la subunidad 1 del receptor del interferón de tipo I (IFNAR1) inhibiendo la señalización del IFN de tipo I y bloqueando la actividad de los IFN-1" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "BARICITINIB", ind: "Artritis, dermatitis atópica, alopecia areata", mech: "Inhibidor selectivo y reversible de la Janus quinasa (JAK)1 y JAK2" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "BARICITINIB", ind: "Artritis reumatoide", mech: "Inhibidor selectivo y reversible de JAK1 y JAK2" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "EFGARTIGIMOD ALFA", ind: "Miastenia Gravis", mech: "Bloqueo del receptor de Fc neonatal (FcRn) que participa en la regulación de los niveles de Ac" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "FILGOTINIB", ind: "Artritis reumatoide y colitis ulcerosa", mech: "Inhibidor competitivo y reversible de ATP de la familia JAK" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "LASMIDITAN", ind: "Migraña", mech: "Agonista del receptor 5-HT1F" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "LESINURAD", ind: "Hiperuricemia en pacientes con gota", mech: "Inhibidor selectivo de la reabsorción de ácido úrico que inhibe al transportador 1 del ácido úrico (URAT1)" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "RITLECITINIB", ind: "Alopecia areata grave", mech: "Inhibidor irreversible y selectivo de JAK3 y la tirosina quinasa, mediante el bloqueo del punto de unión del ATP" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "SARILUMAB", ind: "Artritis reumatoide", mech: "Ac monoclonal subtipo IgG1 de unión específica a los receptores IL-6" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "STRIMVELIS", ind: "Inmunodeficiencia combinada grave por déficit de adenosina desaminasa (ADA-SCID)", mech: "Fracción celular que contienen células CD34+ con vector retroviral que codifica la secuencia humana ADA CADN" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "TILDRAKIZUMAB", ind: "Psoriasis", mech: "Unión a la subunidad p19 de la IL23" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "TOCILIZUMAB", ind: "Tratamiento de la enfermedad por COVID-19, artritis reumatoide", mech: "Ac monoclonal IgG1 recombinante humanizado anti receptor de IL-6 humana" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "UPADACITINIB", ind: "Artritis reumatoide", mech: "Inhibición de JAK1 y JAK3 impidiendo la respuesta inflamatoria" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "VOCLOSPORINA", ind: "Nefritis lúpica", mech: "Inhibidor de la calcineurina" },
+            { cat: "INMUNOLOGÍA/REUMATOLOGÍA", drug: "VOSORITIDA", ind: "Acondroplasia", mech: "Péptido natriurético de tipo C (CNP). La unión al receptor de péptidos natriuréticos de tipo B (NPR-B) antagoniza la señalización de cascada abajo del FGFR3" },
+            { cat: "METABOLISMO", drug: "ÁCIDO BEMPEDOICO", ind: "Hipercolesterolemia primaria", mech: "Inhibidor de la adenosina trifosfato-citrato liasa (ACL) que reduce el C-LDL mediante la inhibición de la síntesis de colesterol 9 en el hígado" },
+            { cat: "METABOLISMO", drug: "ASFOTASA ALFA", ind: "Hipofosfatasia de inicio infantil", mech: "Enzima fosfatasa alcalina no específica de tejido de reemplazo" },
+            { cat: "METABOLISMO", drug: "AVALGLUCOSIDASA ALFA", ind: "Enfermedad de Pompe", mech: "a-glucosidasa ácida humana recombinante que proporciona una fuente exógena de GAA" },
+            { cat: "METABOLISMO", drug: "CIPAGLUCOSIDASA ALFA", ind: "Enfermedad de Pompe", mech: "Terapia de sustitución enzimática para suplir la enzima endógena alfaglucosidasa ácida, afectada o ausente" },
+            { cat: "METABOLISMO", drug: "EVINACUMAB", ind: "Hipercolesterolemia familiar homocigótica (HFHo)", mech: "Ac monoclonal humano recombinante, que se une específicamente e inhibe la ANGPTL3; inhibidor de la lipoproteina lipasa (LPL) y la lipasa endotelial (LE)" },
+            { cat: "METABOLISMO", drug: "FENILBUTIRATO DE GLICEROL", ind: "Trastornos del ciclo de la urea (UCD)", mech: "Unión al nitrógeno reduciendo los niveles de amoníaco en la sangre" },
+            { cat: "METABOLISMO", drug: "FOSDENOPTERINA", ind: "Tratamiento de pacientes con deficiencia de cofactor de molibdeno", mech: "Tratamiento de reposición que proporciona una fuente exógena de cPMP, que es transformada a molibdopterina" },
+            { cat: "METABOLISMO", drug: "LONAFARNIB", ind: "Síndrome de progeria de Hutchinson-Gilford", mech: "Agente modificador de la enfermedad que impide la farnesilación, reduciendo así la acumulación de progerina aberrante y proteínas similares" },
+            { cat: "METABOLISMO", drug: "MIGALASTAT", ind: "Enfermedad de Fabry (deficiencia de a-galactosidasa A)", mech: "Proteína chaperona de unión selectiva y reversible a ciertas formas mutantes de la enzima a-Gal A" },
+            { cat: "METABOLISMO", drug: "PEGUNIGALSIDASA ALFA", ind: "Enfermedad de Fabry", mech: "Sustitución enzimática, forma recombinante pegilada de la a-galactosidasa-A humana" },
+            { cat: "METABOLISMO", drug: "PEGVALIASE", ind: "Fenilcetonuria", mech: "Enzima bacteriana que descompone la fenilalanina" },
+            { cat: "METABOLISMO", drug: "SEBELIPASA ALFA", ind: "Deficiencia de lipasa ácida lisosomal", mech: "Enzima lipasa ácida lisosomal de reemplazo" },
+            { cat: "METABOLISMO", drug: "SETMELANOTIDA", ind: "Obesidad y control del hambre asociados a mutaciones bialélicas de pérdida de función de proopiomelanocortina (POMC) o de receptores de leptina (LEPR)", mech: "Agonista selectivo de los receptores de MC4 (intervienen en la regulación del hambre, la saciedad y el gasto energético)" },
+            { cat: "METABOLISMO", drug: "VOLANESORSEN", ind: "Síndrome de quilomicronemia familiar", mech: "Oligonucleótido antisentido que bloquea la producción de la apo C-III" },
+            { cat: "NEFROLOGÍA", drug: "BUDESONIDA", ind: "Nefropatía por inmunoglobulina A (IgA)", mech: "Supresión de los linfocitos B de la mucosa, situados en las placas de Peyer en el íleon, y la inhibición de su proliferación y diferenciación en células plasmáticas productoras de anticuerpos IgA1 deficientes en galactosa" },
+            { cat: "NEFROLOGÍA", drug: "CICLOSILICATO DE CIRCONIO DE SODIO", ind: "Hiperpotasemia", mech: "Unión selectiva al potasio a cambio de cationes de hidrógeno y de sodio a través del tracto gastrointestinal" },
+            { cat: "NEFROLOGÍA", drug: "DIFELICEFALINA", ind: "Prurito de moderado a grave asociado a la ERC en pacientes en hemodiálisis", mech: "Agonista selectivo de los receptores opioides kappa con baja penetración en el SNC" },
+            { cat: "NEFROLOGÍA", drug: "LUMASIRAN", ind: "Hiperoxaluria primaria de tipo 1 (PH1)", mech: "Ácido ribonucleico pequeño de interferencia (ARNip), que reduce los niveles de la enzima glicolato oxidasa (GO) al dirigirse al ARNm del gen hidroxiácido oxidasa 1 (HAO1) en los hepatocitos" },
+            { cat: "NEFROLOGÍA", drug: "PATIRÓMERO", ind: "Hiperpotasemia", mech: "Polímero no absorbible de intercambio catiónico que contiene el complejo sorbitol-calcio" },
+            { cat: "NEUMOLOGÍA", drug: "BENRALIZUMAB", ind: "Asma eosinofilica grave", mech: "Unión al receptor humano IL-5 que se expresa en la superficie de eosinófilos y basófilos" },
+            { cat: "NEUMOLOGÍA", drug: "DUPILUMAB", ind: "Tratamiento del asma", mech: "Ac monoclonal recombinante de la IgG4 humana que inhibe la señalización de la interleucina-4 y la interleucina-13" },
+            { cat: "NEUMOLOGÍA", drug: "GEFAPIXANT", ind: "Tos crónica refractaria o idiopática", mech: "Antagonista selectivo del receptor P2X3 (canales de iones regulados por el ATP que se encuentran en las fibras C sensitivas del nervio vago en las vías respiratorias)" },
+            { cat: "NEUMOLOGÍA", drug: "LANADELUMAB", ind: "Angioedema hereditario", mech: "Inhibe la actividad proteolítica de la calicreína plasmática" },
+            { cat: "NEUMOLOGÍA", drug: "MEPOLIZUMAB", ind: "Asma eosinofílica refractaria grave", mech: "Ac monoclonal humanizado que se une a IL-5" },
+            { cat: "NEUMOLOGÍA", drug: "NIRSEVIMAB", ind: "Prevención de la enfermedad de las vías respiratorias inferiores producida por (VRS) en neonatos y lactantes", mech: "Ac monoclonal IgG1 humano recombinante de larga duración neutralizante de la conformación de prefusión de la proteína VRS F" },
+            { cat: "NEUMOLOGÍA", drug: "RESLIZUMAB", ind: "Asma severa eosinofílica", mech: "Ac monoclonal IgG4 contra la IL-5" },
+            { cat: "NEUMOLOGÍA", drug: "TEZEPELUMAB", ind: "Asma grave", mech: "Ac monoclonal (IgG2 lambda) dirigido contra la linfopoyetina estromal tímica (TSLP)" },
+            { cat: "NEUMOLOGÍA", drug: "VILOBELIMAB", ind: "Síndrome de dificultad respiratoria aguda (SDRA) inducido por el SARS-CoV2", mech: "Ac monoclonal IgG4 quimérico humano/ratón que es un inhibidor específico del componente C5a" },
+            { cat: "NEUROLOGÍA", drug: "ATOGEPANT", ind: "Profilaxis de la migraña", mech: "No se ha establecido el mecanismo de acción preciso; probable afinidad por varios receptores de la familia de los receptores de la calcitonina/CGRP" },
+            { cat: "NEUROLOGÍA", drug: "BEXPRIPAZOL", ind: "Esquizofrenia", mech: "Agonista parcial de receptores 5HT1A y dopaminérgicos, y antagonismo sobre 5HT2A" },
+            { cat: "NEUROLOGÍA", drug: "CARIPRAZINA", ind: "Esquizofrenia", mech: "Unión a los receptores dopaminérgicos D3, D2 y de serotonina 5-HT1A" },
+            { cat: "NEUROLOGÍA", drug: "CENEGERMIN", ind: "Queratitis neurotrófica", mech: "Proteína recombinante del factor de crecimiento nervioso que ejerce tropismo e induce el crecimiento y supervivencia de células epiteliales" },
+            { cat: "NEUROLOGÍA", drug: "CERLIPONASA ALFA", ind: "Lipofuscinosis neuronal ceroidea tipo 2 (CLN2) o deficiencia de tripeptidil peptidasa 1 (TPP1)", mech: "Enzima de sustitución de la tripeptidil peptidasa-1" },
+            { cat: "NEUROLOGÍA", drug: "DARIDOREXANT", ind: "Insomnia", mech: "Antagonista dual del receptor de la orexina, que actúa sobre los receptores orexina 1 y orexina 2" },
+            { cat: "NEUROLOGÍA", drug: "EPTINEZUMAB", ind: "Profilaxis de la migraña", mech: "Ac humanizado recombinante IgG1 que se une a las formas a y B del péptido relacionado con el gen de la calcitonina (CGRP)" },
+            { cat: "NEUROLOGÍA", drug: "ERENUMAB", ind: "Migraña", mech: "Unión al péptido relacionado con el gen de la calcitonina (CGRP) impidiendo interactuar con su receptor modulando la activación del trigémino" },
+            { cat: "NEUROLOGÍA", drug: "FENFLURAMINA", ind: "Convulsiones asociadas al síndrome de Dravet y al síndrome de Lennox Gastaut", mech: "Se desconoce el modo preciso de acción; antagonista de determinados receptores serotoninérgicos en el cerebro, 5-HT1D, 5-HT2A y 5-HT2C y sobre el receptor sigma-1" },
+            { cat: "NEUROLOGÍA", drug: "FREMANEZUMAB", ind: "Profilaxis de la migraña", mech: "Unión al péptido relacionado con el gen de la calcitonina (CGRP) impidiendo interactuar con su receptor modulando la activación del trigémino" },
+            { cat: "NEUROLOGÍA", drug: "GALCANEZUMAB", ind: "Migraña", mech: "Unión al péptido relacionado con el gen de la calcitonina (CGRP) impidiendo interactuar con su receptor modulando la activación del trigémino" },
+            { cat: "NEUROLOGÍA", drug: "GANAXOLONA", ind: "Epilsepsia de la encefalopatía CDKL5", mech: "No está completamente comprendido. Se cree que actúa mediante la modulación de la función del receptor GABAA" },
+            { cat: "NEUROLOGÍA", drug: "INOTERSEN", ind: "Amiloidosis hereditaria por transtiretina", mech: "Oligonucleótido antisentido de unión al ARNm de la transtiretina" },
+            { cat: "NEUROLOGÍA", drug: "NUSINERSEN", ind: "Atrofia muscular espinal 5q", mech: "Oligonucleótido antisentido que aumenta la cantidad de proteína SMN completa que produce el gen SMN2" },
+            { cat: "NEUROLOGÍA", drug: "OCRELIZUMAB", ind: "Esclerosis múltiple recidivante (EMR) y esclerosis múltiple primaria progresiva temprana (EMPP)", mech: "Ac monoclonal anti CD20" },
+            { cat: "NEUROLOGÍA", drug: "OLIPUDASE ALFA", ind: "Terapia enzimática de sustitución para el tratamiento de las manifestaciones no relacionadas con el sistema nervioso central (SNC) del déficit de esfingomielinasa ácida", mech: "Esfingomielinasa ácida recombinante humana que reduce la acumulación de esfingomielina" },
+            { cat: "NEUROLOGÍA", drug: "PATISIRAN", ind: "Amiloidosis hereditaria por transtiretina", mech: "RNA bicatenario de interferencia que impide la formación de la transtiretina" },
+            { cat: "NEUROLOGÍA", drug: "PITOLISANT", ind: "Narcolepsia con o sin cataplejia", mech: "Antagonista/agonista inverso del receptor de histamina H3" },
+            { cat: "NEUROLOGÍA", drug: "RIMEGEPANT", ind: "Migrañas", mech: "Antagonista del receptor CGRP" },
+            { cat: "NEUROLOGÍA", drug: "RISDIPLAM", ind: "Atrofia muscular espinal (AME) 5q", mech: "Corrige el empalme del SMN2 en la transcripción de ARNm, lo que provoca un aumento de la producción de proteína SMN" },
+            { cat: "NEUROLOGÍA", drug: "SELUMETINIB", ind: "Neurofibromatosis de tipo 1 (NF1)", mech: "Inhibidor selectivo de las proteínas cinasa-cinasas 1 y 2 activadas por mitógenos (MEK 1/2) bloquea la actividad de las MEK y la vía de RAF-MEK-ERK" },
+            { cat: "NEUROLOGÍA", drug: "SIPONIMOD", ind: "Esclerosis múltiple secundaria progresiva", mech: "Modulador del receptor de la esfingosina 1-fosfato (S1P)" },
+            { cat: "NEUROLOGÍA", drug: "TASIMELTEON", ind: "Trastorno del ciclo sueño-vigilia", mech: "Agonista del receptor de melatonina" },
+            { cat: "NEUROLOGÍA", drug: "TOFERSÉN", ind: "ELA", mech: "Oligonucleótido antisentido (ASO) complementario a una porción de la región 3' no traducida (3'UTR) del ARNm de SOD1 humano" },
+            { cat: "NEUROLOGÍA", drug: "UBLITUXIMAB", ind: "Formas recurrentes de esclerosis múltiple (EMR)", mech: "Ac monoclonal quimérico dirigido selectivamente a las células que expresan CD20" },
+            { cat: "NEUROLOGÍA", drug: "VUTRISIRAN", ind: "Amiloidosis hereditaria por transtiretina", mech: "ARNpi bicatenario y estabilizado químicamente que está dirigido de forma específica contra el ARNm de la transtiretina de tipo natural (TTR)" },
+            { cat: "OFTALMOLOGÍA", drug: "BROLUCIZUMAB", ind: "Degeneración macular asociada a la edad (DMAE)", mech: "Fragmento de Ac monoclonal que se une a VEGF-A impidiendo su unión a los receptores de VEGFR-1 y 2" },
+            { cat: "OFTALMOLOGÍA", drug: "FARICIMAB", ind: "DMAEn y alteración visual debida a edema macular diabético (EMD)", mech: "Ac biespecífico inmunoglobulina G1 (IgG1) que actúa a través de la inhibición por neutralización tanto de la angiopoyetina-2 (Ang-2) como del factor VEGF-A" },
+            { cat: "OFTALMOLOGÍA", drug: "NETARSUDIL", ind: "Glaucoma e hipertensión ocular", mech: "Inhibición de la Kinasa Rho aumentando el flujo de salida del humor acuoso a través del sistema trabecular" },
+            { cat: "OFTALMOLOGÍA", drug: "SATRALIZUMAB", ind: "Trastorno del espectro de la neuromielitis óptica (TENMO)", mech: "Ac monoclonal humanizado recombinante de IgG2 que se une a IL-6R soluble y anclado a membrana" },
+            { cat: "OFTALMOLOGÍA", drug: "VORETIGENE NEPARVOVEC", ind: "Distrofia retiniana hereditaria por mutaciones en el gen RPE65 (distrofia de Leber)", mech: "Virus modificado que contiene una copia del gen RPE65" },
+            { cat: "PSIQUIATRÍA", drug: "SOLRIAMFETOL", ind: "Narcolepsia", mech: "Inhibición de la recaptación de dopamina y noradrenalina" },
+            { cat: "SISTEMA MUSCULOESQUELÉTICO", drug: "RAVULIZUMAB", ind: "Miastenia gravis", mech: "Ac IgG2/4K monoclonal que se une de forma específica a la proteína del complemento C5" },
+            { cat: "TRASPLANTE", drug: "IMLIFIDASA", ind: "Desensibilización de pacientes sometidos a un trasplante de riñón", mech: "Proteasa cisteína derivada de la enzima degradante de IgG de Streptococcus pyogenes que escinde las cadenas pesadas de todas las subclases de IgG humanas" },
+            { cat: "VACUNAS", drug: "APEXXNAR", ind: "Inmunización activa para la prevención de la enfermedad invasiva y la neumonía causadas por Streptococcus pneumoniae", mech: "Vacuna de 20 polisacáridos capsulares neumocócicos conjugados con una proteína transportadora" },
+            { cat: "VACUNAS", drug: "DENGVAXIA", ind: "Vacuna frente al Dengue", mech: "Vacuna tetravalente (viva, atenuada)" },
+            { cat: "VACUNAS", drug: "ERVEBO", ind: "Inmunización activa contra el virus del Ébola (EVE)", mech: "Virus vivo atenuado recombinante" },
+            { cat: "VACUNAS", drug: "GARDASIL 9", ind: "Inmunización activa frente enfermedades causadas VPH", mech: "Vacuna nonavalente (recombinante, adsorbida)" },
+            { cat: "VACUNAS", drug: "TRUMENBA (Meningocócica)", ind: "Inmunización frente a la enfermedad invasiva meningocócica causada por Neisseria meningitidis del serogrupo B", mech: "Dos proteínas recombinantes, variantes de lipoproteínas de fusión (fHbp) de la subfamilia A o B" },
+            { cat: "VACUNAS", drug: "MVABEA", ind: "Inmunización activa para la prevención de la enfermedad causada por el virus del Ébola", mech: "Vacuna recombinante, no replicativa en células humanas" },
+            { cat: "VACUNAS", drug: "QDENGA", ind: "Prevención Dengue", mech: "Vacuna tetravalente, virus atenuados" },
+            { cat: "VACUNAS", drug: "SHINGRIX", ind: "Vacuna para proteger frente al herpes zóster y a la neuralgia postherpética", mech: "Vacuna frente al herpes zóster (recombinante, adyuvada)" },
+            { cat: "VACUNAS", drug: "SUPEMTEK", ind: "Inmunización activa en adultos para la prevención de la enfermedad gripal", mech: "Vacuna antigripal tetravalente, recombinante" },
+            { cat: "VACUNAS", drug: "VAXCHORA", ind: "Inmunización activa contra la enfermedad causada por el serogrupo 01 de Vibrio cholerae", mech: "Vacuna recombinante, viva, oral (bacterias del cólera vivas atenuadas)" },
+            { cat: "VACUNAS", drug: "VAXNEUVANCE", ind: "Inmunización activa para la prevención de enfermedades invasivas y neumonías causadas por Streptococcus pneumoniae", mech: "Vacuna de 15 polisacáridos capsulares neumocócicos purificados de Streptococcus pneumoniae conjugados con una proteína transportadora" },
+            { cat: "VACUNAS", drug: "ZABDENO", ind: "Virus del Ébola", mech: "Vacuna monovalente recombinante compuesta por un único vector de adenovirus" },
+            { cat: "GINECOLOGÍA", drug: "FEZOLINETANT", ind: "Síntomas vasomotores asociados a la menopausia", mech: "Antagonista selectivo no hormonal del receptor de neuroquinina 3 (NK3)" },
+            { cat: "OTROS", drug: "ELADOCAGENE EXUPARVOVEC", ind: "Deficiencia grave de L-aminoácido aromático descarboxilasa (AADC)", mech: "Virus que contiene una versión funcional del gen AADC" },
+            { cat: "OTROS", drug: "SAPROPTERINA", ind: "Hiperfenilalaninemia", mech: "Versión sintética de la 6R-BH4 natural, cofactor de las hidroxilasas de fenilalanina, tirosina y triptófano" },
+            { cat: "OTROS", drug: "SETMELATONIDA", ind: "Tratamiento de la obesidad y el control del hambre asociados al síndrome de Bardet-Biedl", mech: "Agonista selectivo de los receptores de MC4" }
+        ];
+
+        // --- ESTADO DEL JUEGO ---
+        let gameMode = 'marathon'; // 'story', 'marathon', 'review'
+        let fullDeck = [];
+        let currentLevel = 0;
+        let levelDeck = [];
+        let currentCard = null;
+        let score = 0;
+        let errors = 0;
+        let isCardFlipped = false;
+        
+        // Cargar favoritos de localStorage
+        let reviewList = JSON.parse(localStorage.getItem('ramonaReviews') || '[]');
+        
+        // Configuración Niveles
+        const CARDS_PER_LEVEL = 10;
+        const LEVEL_TITLES = [
+            "El Bosque de los Antibióticos",
+            "El Río de los Antivirales",
+            "La Montaña Oncológica",
+            "El Valle Cardiovascular",
+            "La Cueva Metabólica",
+            "El Desierto Inmunológico",
+            "Los Pantanos Digestivos",
+            "La Jungla Neurológica",
+            "El Volcán Dermatológico",
+            "El Castillo del Dr. Placebo"
+        ];
+
+        // ELEMENTOS DOM
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const levelCompleteScreen = document.getElementById('level-complete-screen');
+        const endScreen = document.getElementById('end-screen');
+        
+        const uiScore = document.getElementById('score-display');
+        const uiProgressBar = document.getElementById('progress-bar');
+        const uiLevelIndicator = document.getElementById('level-indicator');
+        const uiLevelTitle = document.getElementById('level-title');
+        
+        // Review UI
+        const btnReviewMode = document.getElementById('btn-review-mode');
+        const elReviewCount = document.getElementById('review-count');
+
+        const cardContainer = document.querySelector('.card-container');
+        const controls = document.getElementById('controls');
+
+        // Flashcard Elements
+        const elCat = document.getElementById('card-category');
+        const elDrug = document.getElementById('card-drug');
+        const elInd = document.getElementById('card-indication');
+        const elMech = document.getElementById('card-mechanism');
+
+        // Inicialización
+        document.getElementById('total-cards-count').innerText = rawData.length;
+        lucide.createIcons();
+        updateStartScreenUI();
+
+        function updateStartScreenUI() {
+            elReviewCount.innerText = reviewList.length;
+            if (reviewList.length > 0) {
+                btnReviewMode.classList.remove('hidden');
+                btnReviewMode.classList.add('flex');
+            } else {
+                btnReviewMode.classList.add('hidden');
+                btnReviewMode.classList.remove('flex');
+            }
+        }
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function startMode(mode) {
+            gameMode = mode;
+            score = 0;
+            errors = 0;
+            currentLevel = 0;
+            
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+
+            if (gameMode === 'marathon') {
+                fullDeck = shuffle([...rawData]);
+                levelDeck = [...fullDeck];
+                updateLevelUI("Modo Maratón", "Todos los fármacos");
+            } else if (gameMode === 'review') {
+                // Filtrar rawData para coger solo los que están en reviewList
+                // Usamos el nombre del fármaco como ID único
+                fullDeck = rawData.filter(item => reviewList.includes(item.drug));
+                // Barajar
+                fullDeck = shuffle(fullDeck);
+                levelDeck = [...fullDeck];
+                updateLevelUI("Modo Repaso", "Cartas Marcadas");
+            } else {
+                fullDeck = shuffle([...rawData]);
+                startLevel(0);
+                return; // startLevel llama a loadNextCard
+            }
+            
+            updateUI();
+            loadNextCard();
+        }
+
+        function startLevel(lvlIndex) {
+            currentLevel = lvlIndex;
+            // Cortar el mazo completo para sacar el sub-mazo de este nivel
+            const start = lvlIndex * CARDS_PER_LEVEL;
+            const end = start + CARDS_PER_LEVEL;
+            
+            // Si ya no quedan cartas suficientes, cogemos lo que queda
+            if (start >= fullDeck.length) {
+                showWinScreen();
+                return;
+            }
+            
+            levelDeck = fullDeck.slice(start, end);
+            
+            let title = LEVEL_TITLES[lvlIndex % LEVEL_TITLES.length];
+            if (lvlIndex >= LEVEL_TITLES.length) title += " (Parte " + (Math.floor(lvlIndex/LEVEL_TITLES.length) + 1) + ")";
+            
+            updateLevelUI(`Nivel ${lvlIndex + 1}`, title);
+            
+            // Ocultar pantalla de nivel completado si estaba
+            levelCompleteScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+            
+            loadNextCard();
+        }
+
+        function updateLevelUI(label, title) {
+            uiLevelIndicator.innerText = label;
+            uiLevelTitle.innerText = title;
+        }
+
+        function updateUI() {
+            uiScore.innerText = score;
+            
+            // Barra de progreso
+            let progress = 0;
+            
+            if (gameMode === 'story') {
+                // Modo historia: Progreso dentro del nivel
+                progress = 100 - ((levelDeck.length / CARDS_PER_LEVEL) * 100);
+            } else if (gameMode === 'review') {
+                // Modo repaso: Progreso sobre el total de reviews
+                progress = 100 - ((levelDeck.length / fullDeck.length) * 100);
+            } else {
+                // Maratón
+                progress = 100 - ((levelDeck.length / rawData.length) * 100);
+            }
+            
+            if(progress < 0) progress = 0;
+            if(progress > 100) progress = 100;
+            uiProgressBar.style.width = `${progress}%`;
+        }
+
+        function loadNextCard() {
+            if (levelDeck.length === 0) {
+                handleEmptyDeck();
+                return;
+            }
+
+            // Resetear estado visual de la carta
+            isCardFlipped = false;
+            cardContainer.classList.remove('flipped');
+            controls.style.opacity = '0';
+            controls.style.pointerEvents = 'none';
+
+            // Coger siguiente carta
+            currentCard = levelDeck.shift(); 
+
+            setTimeout(() => {
+                elCat.innerText = currentCard.cat;
+                elDrug.innerText = currentCard.drug;
+                elInd.innerText = currentCard.ind;
+                elMech.innerText = currentCard.mech;
+                
+                // Color categoría
+                const colors = ['text-blue-500', 'text-purple-500', 'text-pink-500', 'text-orange-500'];
+                const bgColors = ['bg-blue-100', 'bg-purple-100', 'bg-pink-100', 'bg-orange-100'];
+                const colorIdx = currentCard.cat.length % colors.length;
+                elCat.className = `absolute top-4 right-4 text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider ${colors[colorIdx]} ${bgColors[colorIdx]}`;
+                
+                // Actualizar estado de la estrella
+                updateStarIcon();
+            }, 200);
+            
+            updateUI();
+        }
+        
+        function updateStarIcon() {
+            const isMarked = reviewList.includes(currentCard.drug);
+            const stars = document.querySelectorAll('.star-btn i');
+            stars.forEach(icon => {
+                if (isMarked) {
+                    icon.classList.add('star-active', 'fill-current');
+                    icon.classList.remove('text-gray-300');
+                } else {
+                    icon.classList.remove('star-active', 'fill-current');
+                    icon.classList.add('text-gray-300');
+                }
+            });
+        }
+
+        function toggleReview(e) {
+            e.stopPropagation(); // Evitar que gire la carta
+            const drugName = currentCard.drug;
+            
+            if (reviewList.includes(drugName)) {
+                // Desmarcar
+                reviewList = reviewList.filter(d => d !== drugName);
+            } else {
+                // Marcar
+                reviewList.push(drugName);
+            }
+            
+            // Guardar en localStorage
+            localStorage.setItem('ramonaReviews', JSON.stringify(reviewList));
+            updateStarIcon();
+        }
+
+        function handleEmptyDeck() {
+            if (gameMode === 'marathon' || gameMode === 'review') {
+                showWinScreen();
+            } else {
+                // Modo historia: Nivel completado
+                // Comprobamos si quedan más niveles
+                const nextLevelStart = (currentLevel + 1) * CARDS_PER_LEVEL;
+                if (nextLevelStart >= fullDeck.length) {
+                    showWinScreen();
+                } else {
+                    showLevelCompleteScreen();
+                }
+            }
+        }
+
+        function showLevelCompleteScreen() {
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            levelCompleteScreen.classList.remove('hidden');
+        }
+
+        function nextLevel() {
+            startLevel(currentLevel + 1);
+        }
+        
+        function goToMenu() {
+            // Reset visuals logic mainly
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            levelCompleteScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            
+            // Actualizar contador del botón review
+            updateStartScreenUI();
+            
+            startScreen.classList.remove('hidden');
+        }
+
+        function flipCard() {
+            isCardFlipped = true;
+            cardContainer.classList.add('flipped');
+            setTimeout(() => {
+                controls.style.opacity = '1';
+                controls.style.pointerEvents = 'auto';
+            }, 300);
+        }
+
+        function handleAnswer(isCorrect) {
+            if (isCorrect) {
+                score += 10;
+                // No hacemos nada extra, la carta ya salió del mazo
+            } else {
+                errors++;
+                // La carta vuelve al mazo (al final o aleatorio)
+                // En modo repaso NO la sacamos de reviewList si se falla, eso es solo manual con la estrella.
+                // Pero sí la volvemos a mostrar en esta sesión para que se aprenda.
+                if (levelDeck.length > 3) {
+                     const insertPos = Math.floor(Math.random() * (levelDeck.length - 1)) + 1;
+                     levelDeck.splice(insertPos, 0, currentCard);
+                } else {
+                    levelDeck.push(currentCard);
+                }
+            }
+            loadNextCard();
+        }
+
+        function showWinScreen() {
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            levelCompleteScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-errors').innerText = errors;
+        }
+
+    </script>
+</body>
+</html>
